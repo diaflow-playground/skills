@@ -1,0 +1,5089 @@
+openapi: 3.0.3
+info:
+  title: Diaflow API
+  description: |
+    API for the Diaflow workflow automation platform.
+    Diaflow is a GenAI app builder, enabling users to create
+    workflows (flows), chat interfaces, pages, tables, vector knowledge bases,
+    and more within workspaces.
+  version: 1.0.0
+  contact:
+    name: Diaflow
+    url: https://diaflow.app
+
+servers:
+  - url: https://api.diaflow.io/api/v1
+    description: Production API
+
+security:
+  - bearerAuth: []
+    apiKey: []
+
+tags:
+  - name: Auth
+    description: Authentication and token management
+  - name: Users
+    description: User profile management
+  - name: Workspaces
+    description: Workspace management and settings
+  - name: Builders
+    description: Flow/builder CRUD and execution
+  - name: Interfaces
+    description: UI and chat interface configuration
+  - name: Histories
+    description: Execution history and run logs
+  - name: Components
+    description: Flow node components and configurations
+  - name: Templates
+    description: Community templates and categories
+  - name: Documents
+    description: Pages/documents management
+  - name: Tables
+    description: Workspace database tables
+  - name: Drive
+    description: S3 file storage
+  - name: Vectors
+    description: Vector groups and knowledge bases
+  - name: Community
+    description: Community profiles and badges
+  - name: Members
+    description: Workspace team members and invitations
+  - name: API Keys
+    description: Workspace API key management
+  - name: Integrations
+    description: Third-party integrations and credentials
+  - name: Products
+    description: Subscription products and plans
+  - name: Chat
+    description: Chat preset styles and agent windows
+  - name: Prompts
+    description: Sample prompts and categories
+
+paths:
+  # ──────────────────────────────────────────────
+  # Auth
+  # ──────────────────────────────────────────────
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login
+      description: Authenticate a user with email and password, returning a session token.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+      responses:
+        "200":
+          description: Successful authentication
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sessionToken:
+                    type: string
+                  user:
+                    $ref: "#/components/schemas/UserSummary"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Logout
+      description: Invalidate the current session token.
+      responses:
+        "200":
+          description: Successfully logged out
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /auth/presign-token:
+    get:
+      tags: [Auth]
+      summary: Get presigned token
+      description: |
+        Obtain a CloudFront presigned cookie set for accessing CDN-hosted workspace assets.
+        Returns Policy, Signature, and Key-Pair-Id fields for CloudFront signed cookies,
+        along with an expiration timestamp.
+      responses:
+        "200":
+          description: Presigned CloudFront cookie parameters
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  Policy:
+                    type: string
+                    description: CloudFront signed cookie policy (base64-encoded).
+                    example: "eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoi..."
+                  Signature:
+                    type: string
+                    description: CloudFront signed cookie signature.
+                    example: "Qfk74~uctgwq6EN4id46-yX1KQJuvM5y..."
+                  Key-Pair-Id:
+                    type: string
+                    description: CloudFront key pair identifier.
+                    example: "K13E41YGHZSCC1"
+                  expires_at:
+                    type: integer
+                    description: Unix timestamp when the presigned cookies expire.
+                    example: 1773853354
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ──────────────────────────────────────────────
+  # Users
+  # ──────────────────────────────────────────────
+  /users/me:
+    get:
+      tags: [Users]
+      summary: Get current user
+      description: Retrieve the authenticated user's full profile including account settings, social logins, and onboarding data.
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    patch:
+      tags: [Users]
+      summary: Update current user
+      description: Update the authenticated user's profile fields.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fullName:
+                  type: string
+                avatar:
+                  type: string
+                username:
+                  type: string
+      responses:
+        "200":
+          description: Updated user profile
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  fullName:
+                    type: string
+                  email:
+                    type: string
+                  avatar:
+                    type: string
+                    nullable: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ──────────────────────────────────────────────
+  # Workspaces
+  # ──────────────────────────────────────────────
+  /workspaces:
+    get:
+      tags: [Workspaces]
+      summary: List workspaces
+      description: List all workspaces accessible to the authenticated user.
+      responses:
+        "200":
+          description: List of workspaces
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/WorkspaceSummary"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /workspaces/{workspaceId}:
+    get:
+      tags: [Workspaces]
+      summary: Get workspace
+      description: Retrieve details for a specific workspace.
+      parameters:
+        - $ref: "#/components/parameters/workspaceId"
+      responses:
+        "200":
+          description: Workspace details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Workspace"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Access denied to this workspace.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                detail: "You do not have permission to access this workspace."
+
+  /workspaces/{workspaceId}/me:
+    get:
+      tags: [Workspaces]
+      summary: Get my workspace membership
+      description: Get the current user's membership details within the workspace.
+      parameters:
+        - $ref: "#/components/parameters/workspaceId"
+      responses:
+        "200":
+          description: Workspace membership
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceMembership"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Access denied to this workspace.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                detail: "You do not have permission to access this workspace."
+
+  /workspaces/{workspaceId}/subscription:
+    get:
+      tags: [Workspaces]
+      summary: Get workspace subscription
+      description: Retrieve the workspace's subscription and billing plan details.
+      parameters:
+        - $ref: "#/components/parameters/workspaceId"
+      responses:
+        "200":
+          description: Subscription details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Subscription"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Access denied to this workspace.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                detail: "You do not have permission to access this workspace."
+
+  # ──────────────────────────────────────────────
+  # Builders (Flows)
+  # ──────────────────────────────────────────────
+  /workspaces/{workspaceId}/builders:
+    get:
+      tags: [Builders]
+      summary: List builders
+      description: |
+        List all flow builders in the workspace with pagination.
+        Returns a paginated list with builder metadata, inline interface/interfaceChat
+        summaries for published builders, and the full flow graph (nodes, connectors) in the data field.
+      parameters:
+        - $ref: "#/components/parameters/workspaceId"
+        - name: page
+          in: query
+          description: Page number (1-indexed).
+          schema:
+            type: integer
+            default: 1
+            example: 1
+        - name: pageSize
+          in: query
+          description: Number of builders per page.
+          schema:
+            type: integer
+            default: 10
+            example: 20
+      responses:
+        "200":
+          description: Paginated list of builders
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedBuilders"
+              example:
+                total: 154
+                results:
+                  - title: "My Chatbot"
+                    uniqueId: "wiLwtQlZEj"
+                    id: 38288
+                    workspaceId: 256
+                    interfaceType: "chat"
+                    triggerType: "inputs"
+                    version: "draft"
+                    isActive: true
+                    enableAccess: false
+                    enableApi: false
+                    isSubflow: false
+                    webhookEnable: false
+                    runCount: 0
+                    createdAt: "2025-11-18T12:52:28.486957Z"
+                    updatedAt: "2025-11-18T12:52:28.486962Z"
+                    createdBy:
+                      id: 276
+                      fullName: "User Name"
+                      email: "user@example.com"
+                    interface: null
+                    interfaceChat: null
+                    data:
+                      connectors: []
+                      nodes: []
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /builders:
+    post:
+      tags: [Builders]
+      summary: Create builder
+      description: Create a new flow builder in a workspace.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, interfaceType, workspaceId]
+              properties:
+                title:
+                  type: string
+                  description: Display name for the builder.
+                  example: "My New Flow"
+                interfaceType:
+                  type: string
+                  description: "Builder type: form, chat, automation, or scheduled."
+                  enum: [form, chat, automation, scheduled]
+                workspaceId:
+                  type: integer
+                  description: Workspace to create the builder in.
+                  example: 256
+      responses:
+        "201":
+          description: Created builder
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Builder"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /builders/{builderId}:
+    get:
+      tags: [Builders]
+      summary: Get builder
+      description: |
+        Retrieve a specific flow builder by its uniqueId. Returns the full builder
+        object including the flow graph (nodes, connectors) in the data field.
+        The builderId parameter is the alphanumeric uniqueId (e.g. "pEBHQNskat"), not the numeric id.
+      parameters:
+        - $ref: "#/components/parameters/builderId"
+      responses:
+        "200":
+          description: Builder details with full flow graph
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Builder"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags: [Builders]
+      summary: Update builder
+      description: Update a builder's title, nodes, connectors, or other fields.
+      parameters:
+        - $ref: "#/components/parameters/builderId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  description: Updated display name.
+                data:
+                  type: object
+                  description: Updated flow graph data.
+                  properties:
+                    nodes:
+                      type: array
+                      items:
+                        $ref: "#/components/schemas/FlowNode"
+                    connectors:
+                      type: array
+                      items:
+                        $ref: "#/components/schemas/Connector"
+      responses:
+        "200":
+          description: Updated builder
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Builder"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Builders]
+      summary: Delete builder
+      description: Permanently delete a flow builder by its uniqueId.
+      parameters:
+        - $ref: "#/components/parameters/builderId"
+      responses:
+        "204":
+          description: Successfully deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /builders/{builderId}/publish:
+    post:
+      tags: [Builders]
+      summary: Publish builder
+      description: |
+        Publish a draft builder to make it live. Changes the version from "draft" to "publish"
+        and creates the associated interface and chat-interface records.
+      parameters:
+        - $ref: "#/components/parameters/builderId"
+      responses:
+        "200":
+          description: Published builder
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Builder"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /builders/{builderId}/execute:
+    post:
+      tags: [Builders]
+      summary: Execute builder
+      description: Trigger a flow builder execution with input data.
+      parameters:
+        - $ref: "#/components/parameters/builderId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                input:
+                  type: object
+                  description: Input data for the flow trigger node.
+                mode:
+                  type: string
+                  description: Execution mode.
+      responses:
+        "200":
+          description: Execution result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExecutionResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ──────────────────────────────────────────────
+  # Interfaces
+  # ──────────────────────────────────────────────
+  /interfaces/{builderId}:
+    get:
+      tags: [Interfaces]
+      summary: Get builder interface
+      description: |
+        Retrieve the form/app interface configuration for a published builder.
+        The builderId is the alphanumeric uniqueId. Returns 404 if the builder
+        has not been published or does not exist.
+      parameters:
+        - $ref: "#/components/parameters/builderId"
+      responses:
+        "200":
+          description: Interface configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Interface"
+              example:
+                id: 4294
+                name: "App #Dx6c64YWYk"
+                primaryColor: null
+                buttonTheme: null
+                widgetTheme: null
+                botLogo: null
+                banner: null
+                welcomeMessage: null
+                isHidePowered: false
+                component:
+                  - id: "1760502826936"
+                    error: false
+                    title: "Legal"
+                    value: "{{}}"
+                    result: null
+                    is_done: false
+                    node_type: "fixed"
+                    config_type: "output"
+                    output_type: "text"
+                    is_formatted: true
+                    error_message: ""
+                builderCode: "Dx6c64YWYk"
+                security: "public"
+                lastInteraction: "2025-10-15T04:34:35.379436Z"
+                description: null
+                newVersion: null
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /chat-interfaces/{builderId}:
+    get:
+      tags: [Interfaces]
+      summary: Get chat interface
+      description: |
+        Retrieve the chat interface configuration for a published builder.
+        Includes chat widget styling, welcome messages, opening questions,
+        contact collection settings, and the embedded builder flow graph.
+        Returns 404 if the builder has not been published or does not exist.
+      parameters:
+        - $ref: "#/components/parameters/builderId"
+      responses:
+        "200":
+          description: Chat interface configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatInterface"
+              example:
+                id: 4192
+                title: "App #Dx6c64YWYk"
+                tagline: "Dazzle your customer with super-charged chatbot"
+                logo: null
+                cover: null
+                widgetTheme: "creative"
+                primaryColor: "#F4F2EE"
+                isHidePowered: false
+                callToActionButton: "Hi there! 👋"
+                callToActionButtonSubtitle: "Chat with us"
+                isShowContact: true
+                isAskCustomerInformation: true
+                hasAllowChatAsGuest: true
+                welcomeMessage: "Hi there! 👋 I'm here to help you."
+                builderCode: "Dx6c64YWYk"
+                security: "public"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /chat-interfaces/app/{appId}:
+    get:
+      tags: [Interfaces]
+      summary: Get public chat interface
+      description: |
+        Retrieve a public chat interface by its public app ID (builderCode).
+        Only requires API key authentication.
+      security:
+        - apiKey: []
+      parameters:
+        - name: appId
+          in: path
+          required: true
+          description: The builder's uniqueId (builderCode).
+          schema:
+            type: string
+            example: "Dx6c64YWYk"
+      responses:
+        "200":
+          description: Public chat interface
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatInterface"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ──────────────────────────────────────────────
+  # Histories
+  # ──────────────────────────────────────────────
+  /workspaces/{workspaceId}/histories:
+    get:
+      tags: [Histories]
+      summary: List execution histories
+      description: |
+        List execution histories (run logs) for the workspace with pagination.
+        Each history record includes session info, builder reference, execution status,
+        per-node action results, credit usage, latency, and the triggering API key details.
+      parameters:
+        - $ref: "#/components/parameters/workspaceId"
+        - name: page
+          in: query
+          description: Page number (1-indexed).
+          schema:
+            type: integer
+            default: 1
+            example: 1
+        - name: pageSize
+          in: query
+          description: Number of history records per page.
+          schema:
+            type: integer
+            default: 10
+            example: 20
+      responses:
+        "200":
+          description: Paginated execution histories
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedHistories"
+              example:
+                total: 334
+                results:
+                  - id: 1058915
+                    sessionId: "24f2aee6-cc4f-4631-95fd-a9f92a595189"
+                    builderId: 45805
+                    templateId: null
+                    userId: 276
+                    workspaceId: 256
+                    status: "Completed"
+                    section: "Preview on website"
+                    input: null
+                    output: null
+                    models: ["claude-4.5-opus"]
+                    latency: 4.49
+                    logType: "Chat app"
+                    via: "Test"
+                    credit: 0
+                    totalConversation: 0
+                    start: "2025-07-21T12:38:48.573871Z"
+                    end: "2025-07-21T12:38:53.067279Z"
+                    createdAt: "2025-07-21T12:38:48.487884Z"
+                    updatedAt: "2025-07-21T12:38:53.072608Z"
+                    meta: {}
+                    builder:
+                      title: "App #2cz0BxX413"
+                      uniqueId: "2cz0BxX413"
+                      isInternalApp: null
+                      version: "draft"
+                      interfaceType: "form"
+                      interface: null
+                      deletedAt: null
+                    user:
+                      id: 276
+                      email: "user@example.com"
+                      fullName: "User Name"
+                      avatar: "https://example.com/avatar.jpg"
+                      color: "#9c899e"
+                      credit: null
+                      isProfileVerified: null
+                    apiKey: null
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /workspaces/{workspaceId}/histories/{historyId}:
+    get:
+      tags: [Histories]
+      summary: Get execution history detail
+      description: |
+        Retrieve details of a specific execution by its numeric id.
+        Returns the same shape as a list item, including the full per-node action
+        map with input/output/latency for each node, and the output data.
+      parameters:
+        - $ref: "#/components/parameters/workspaceId"
+        - name: historyId
+          in: path
+          required: true
+          description: Numeric history record ID.
+          schema:
+            type: integer
+            example: 370391
+      responses:
+        "200":
+          description: Execution history detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HistoryDetail"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          description: Invalid history ID format (e.g. passing a sessionId UUID instead of numeric id).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ──────────────────────────────────────────────
+  # Components & Node Configs
+  # ──────────────────────────────────────────────
+  /components:
+    get:
+      tags: [Components]
+      summary: List components
+      description: |
+        List all available flow node component types (AI models, integrations, utilities, etc.).
+        Returns a paginated response with total count and an array of component objects.
+      responses:
+        "200":
+          description: Paginated list of components
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total:
+                    type: integer
+                    description: Total number of available components.
+                    example: 203
+                  results:
+                    type: array
+                    description: Array of component objects.
+                    items:
+                      $ref: "#/components/schemas/Component"
+              example:
+                total: 203
+                results:
+                  - id: 225
+                    icon: null
+                    title: "OpenRouter (BYOK)"
+                    description: "Use OpenRouter's models with your own API Key"
+                    nodeId: "openrouterc"
+                    isRoot: true
+                    isPipedream: false
+                    isActive: true
+                    priority: 173
+                    infoLink: "https://docs.diaflow.io/flows/component-reference/public-ai-llm-models/openrouter"
+                    numAction: 0
+                    categories:
+                      - id: 122
+                        name: "Public AI/LLM Models"
+                        icon: "public/production/admin/component-categories/icon/key-regular.svg"
+                        priority: 7
+                        isActive: true
+                        numComponent: 12
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /node-configs/model-configs:
+    get:
+      tags: [Components]
+      summary: Get model configurations
+      description: |
+        Get available AI model configurations for LLM nodes, keyed by provider identifier.
+        Each provider maps to an array of model configuration objects with model name, capabilities, and supported file formats.
+      responses:
+        "200":
+          description: Model configurations keyed by provider
+          content:
+            application/json:
+              schema:
+                type: object
+                description: |
+                  Object keyed by provider identifier. Each value is an array of ModelConfig objects.
+                  Known provider keys include: antpc, llama, cohere, openai, default, mistral, byteplus,
+                  anthropic, firecrawl, vertex-ai, gemini-image, byteplus-image, diaflow-models,
+                  image-generation, video-generation.
+                additionalProperties:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/ModelConfig"
+              example:
+                openai:
+                  - model: "gpt-5-mini"
+                    is_active: true
+                    is_memory: true
+                    max_token: 120000
+                    model_type: "gpt-5"
+                    description: "Smaller, faster variant offering excellent balance between speed and capability."
+                    file_formats: [".jpg,.jpeg", ".png", ".webp", ".docx", ".txt", ".pdf", ".srt"]
+                    params:
+                      speed: 4
+                      intelligence: 4
+                anthropic:
+                  - name: "Claude 4 Sonnet"
+                    model: "claude-4-sonnet-20250514"
+                    is_active: true
+                    is_memory: true
+                    model_type: "chat"
+                    file_formats: [".jpg,.jpeg", ".png", ".webp", ".docx", ".txt", ".pdf"]
+                llama:
+                  - name: "Llama 3.2 11B Vision Instruct"
+                    model: "us.meta.llama3-2-11b-instruct-v1:0"
+                    is_active: true
+                    model_type: "multimodal"
+                    file_formats: [".jpg,.jpeg", ".png", ".webp", ".docx", ".txt", ".pdf", ".srt"]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /node-configs/component-prices:
+    get:
+      tags: [Components]
+      summary: Get component prices
+      description: |
+        Get credit pricing for each flow component type.
+        Returns an object keyed by node ID, where each value contains the node's pricing tiers grouped by model/variant.
+      responses:
+        "200":
+          description: Component pricing keyed by node ID
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  components:
+                    type: object
+                    description: Pricing data keyed by component node ID.
+                    additionalProperties:
+                      $ref: "#/components/schemas/ComponentPricing"
+              example:
+                components:
+                  gemini:
+                    node_id: "gemini"
+                    prices:
+                      gemini-2.5-flash:
+                        - node_id: "gemini"
+                          unit: "token"
+                          model: "gemini-2.5-flash"
+                          input_cost: 0.0001
+                          output_cost: 0.0002
+                          variant: null
+                          is_active: true
+                          priority: 8
+                          id: 66
+                  data-json:
+                    node_id: "data-json"
+                    prices:
+                      data-json:
+                        - node_id: "data-json"
+                          unit: "request"
+                          model: "data-json"
+                          input_cost: 0.0
+                          output_cost: 0.0
+                          is_active: true
+                          priority: 1
+                          id: 38
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ──────────────────────────────────────────────
+  # Templates & Community
+  # ──────────────────────────────────────────────
+  /template-categories:
+    get:
+      tags: [Templates]
+      summary: List template categories
+      description: |
+        List categories used to organize community flow templates.
+        Returns all categories (both active and inactive) with their metadata.
+      responses:
+        "200":
+          description: Template categories
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total:
+                    type: integer
+                    description: Total number of template categories.
+                    example: 12
+                  results:
+                    type: array
+                    description: Array of template category objects.
+                    items:
+                      $ref: "#/components/schemas/TemplateCategory"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /templates/public:
+    get:
+      tags: [Templates]
+      summary: List public templates
+      description: |
+        List publicly shared flow templates from the community.
+        Supports pagination via query parameters. Returns templates with their
+        categories, usage count, key features, and flow graph data.
+      parameters:
+        - name: page
+          in: query
+          description: Page number (1-based).
+          schema:
+            type: integer
+            default: 1
+            example: 1
+        - name: pageSize
+          in: query
+          description: Number of templates per page.
+          schema:
+            type: integer
+            default: 10
+            example: 10
+      responses:
+        "200":
+          description: Paginated list of public templates.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total:
+                    type: integer
+                    description: Total number of public templates.
+                    example: 474
+                  results:
+                    type: array
+                    description: Array of template objects for the current page.
+                    items:
+                      $ref: "#/components/schemas/Template"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /community/profile/me:
+    get:
+      tags: [Community]
+      summary: Get my community profile
+      description: |
+        Retrieve the current user's community profile.
+        Returns 404 if the user has not created a community profile yet.
+      responses:
+        "200":
+          description: Community profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommunityProfile"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Community profile not found for the authenticated user.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                detail: "Community profile not found"
+
+  /badges/current:
+    get:
+      tags: [Community]
+      summary: Get current badge/announcement
+      description: |
+        Get the current active badge or announcement banner.
+        Returns a single announcement object with title, category, content,
+        and an optional redirect URL. This is typically used to display
+        news banners or notifications in the UI.
+      responses:
+        "200":
+          description: Current badge/announcement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Badge"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ──────────────────────────────────────────────
+  # Documents (Pages)
+  # ──────────────────────────────────────────────
+  /documents:
+    get:
+      tags: [Documents]
+      summary: List documents
+      description: >-
+        List all pages/documents in the workspace. Returns a paginated list
+        with document metadata, content, AI configuration, and creator info.
+      responses:
+        "200":
+          description: Paginated list of documents.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total:
+                    type: integer
+                    description: Total number of documents in the workspace.
+                    example: 5
+                  results:
+                    type: array
+                    description: Array of document objects.
+                    items:
+                      $ref: "#/components/schemas/Document"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags: [Documents]
+      summary: Create document
+      description: Create a new page/document in the workspace.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title]
+              properties:
+                title:
+                  type: string
+                  description: Document title.
+                  example: "Meeting Notes"
+                data:
+                  type: string
+                  description: Document content in markdown or plain text.
+                description:
+                  type: string
+                  nullable: true
+                  description: Optional short description.
+                language:
+                  type: string
+                  nullable: true
+                  description: Content language (e.g. "auto-detect", "english").
+                writingStyle:
+                  type: string
+                  nullable: true
+                  description: AI writing style preset.
+                  enum: [Expert, Balanced, Creative]
+                writingLength:
+                  type: string
+                  nullable: true
+                  description: AI writing length preset.
+                  enum: [Auto, Short, Long]
+                llmModel:
+                  type: string
+                  nullable: true
+                  description: LLM model to use for AI features.
+                  example: "gpt-5-mini"
+                llmProvider:
+                  type: string
+                  nullable: true
+                  description: LLM provider name.
+                  example: "Open AI"
+                vectorSource:
+                  type: string
+                  nullable: true
+                  description: Knowledge source mode for AI.
+                  example: "notUsingKnowledgeSource"
+      responses:
+        "201":
+          description: Created document.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Document"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /documents/config:
+    get:
+      tags: [Documents]
+      summary: Get documents config
+      description: >-
+        Get the pages feature configuration including available AI features,
+        LLM providers/models, writing styles, and writing length presets.
+      responses:
+        "200":
+          description: Documents feature configuration.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  features:
+                    type: array
+                    description: Available AI writing features (fix grammar, translate, summarize, etc.).
+                    items:
+                      type: object
+                      properties:
+                        code:
+                          type: string
+                          description: Feature identifier code.
+                          example: "fix-spelling-and-grammar"
+                        name:
+                          type: string
+                          description: Human-readable feature name.
+                          example: "Fix spelling and grammar"
+                        subGroup:
+                          type: array
+                          nullable: true
+                          description: Sub-options for features like tone or translate.
+                          items:
+                            type: object
+                            properties:
+                              name:
+                                type: string
+                                example: "English"
+                              sub_code:
+                                type: string
+                                example: "english"
+                  llm_provider:
+                    type: object
+                    description: Available LLM providers and their models.
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          name:
+                            type: string
+                            description: Display name of the model.
+                            example: "gpt-5-mini"
+                          model:
+                            type: string
+                            description: Model identifier string.
+                            example: "gpt-5-mini"
+                    example:
+                      Open AI:
+                        - name: "gpt-5-mini"
+                          model: "gpt-5-mini"
+                      Anthropic:
+                        - name: "claude-4-sonnet"
+                          model: "claude-4-sonnet"
+                  writing_style:
+                    type: object
+                    description: >-
+                      Writing style presets (Expert, Balanced, Creative) with per-model
+                      LLM parameters (top_p, temperature, presence_penalty, frequency_penalty).
+                    additionalProperties:
+                      type: object
+                      additionalProperties:
+                        type: object
+                        properties:
+                          top_p:
+                            type: number
+                          temperature:
+                            type: number
+                          presence_penalty:
+                            type: number
+                          frequency_penalty:
+                            type: number
+                  writing_length:
+                    type: object
+                    description: >-
+                      Writing length presets (Auto, Short, Long) with per-model
+                      max_length token limits.
+                    additionalProperties:
+                      type: object
+                      additionalProperties:
+                        type: object
+                        properties:
+                          max_length:
+                            type: integer
+                            example: 4000
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ──────────────────────────────────────────────
+  # Tables
+  # ──────────────────────────────────────────────
+  /workspace-databases/{workspaceId}/tables:
+    get:
+      tags: [Tables]
+      summary: List database table schemas
+      description: >-
+        List all database tables for a workspace with their column definitions.
+        Returns an array of table objects, each containing the table name and
+        its column schema (name and data_type for each column). This endpoint
+        is useful for inspecting the raw database structure.
+      parameters:
+        - $ref: "#/components/parameters/workspaceId"
+      responses:
+        "200":
+          description: Array of table schema objects.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TableSchema"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /workspace-db-tables/workspace/{workspaceId}:
+    get:
+      tags: [Tables]
+      summary: List DB tables (metadata)
+      description: >-
+        List database tables for a workspace with metadata (row count, column count,
+        creation date, active status). Returns a paginated result with total count.
+      parameters:
+        - $ref: "#/components/parameters/workspaceId"
+      responses:
+        "200":
+          description: Paginated list of table metadata.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total:
+                    type: integer
+                    description: Total number of tables.
+                    example: 4
+                  results:
+                    type: array
+                    description: Array of table metadata objects.
+                    items:
+                      $ref: "#/components/schemas/Table"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ──────────────────────────────────────────────
+  # Drive (S3 Storage)
+  # ──────────────────────────────────────────────
+  /drives/s3/directory:
+    get:
+      tags: [Drive]
+      summary: List drive files
+      description: >-
+        List files and directories in the workspace's S3 drive storage.
+        Returns file/folder metadata including size, MIME type, S3 key,
+        and parent folder. Both files and folders are returned in a flat list.
+      responses:
+        "200":
+          description: Drive directory listing with counts.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total:
+                    type: integer
+                    description: Total number of items (files + folders).
+                    example: 11
+                  fileCount:
+                    type: integer
+                    description: Number of files in the listing.
+                    example: 3
+                  folderCount:
+                    type: integer
+                    description: Number of folders in the listing.
+                    example: 8
+                  results:
+                    type: array
+                    description: Array of file and folder objects.
+                    items:
+                      $ref: "#/components/schemas/DriveFile"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /drives/s3/upload:
+    post:
+      tags: [Drive]
+      summary: Upload file
+      description: Upload a file to the S3 drive storage.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: Uploaded file info
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  key:
+                    type: string
+                    description: S3 object key of the uploaded file.
+                    example: "production/workspace_256/report.csv"
+                  url:
+                    type: string
+                    description: Public URL of the uploaded file.
+                    example: "https://s3.amazonaws.com/bucket/production/workspace_256/report.csv"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ──────────────────────────────────────────────
+  # Vectors
+  # ──────────────────────────────────────────────
+  /workspaces/{workspaceId}/vector-groups:
+    get:
+      tags: [Vectors]
+      summary: List vector groups
+      description: >-
+        List vector groups (knowledge bases) in the workspace. Each group
+        includes a title, description, vector count, and usage statistics.
+      parameters:
+        - $ref: "#/components/parameters/workspaceId"
+      responses:
+        "200":
+          description: Paginated list of vector groups.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total:
+                    type: integer
+                    description: Total number of vector groups.
+                    example: 16
+                  results:
+                    type: array
+                    description: Array of vector group summary objects.
+                    items:
+                      $ref: "#/components/schemas/VectorGroupSummary"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /workspaces/{workspaceId}/vectors:
+    get:
+      tags: [Vectors]
+      summary: List workspace vectors
+      description: >-
+        List all vectors (knowledge base items) across all groups in the workspace.
+        Each vector includes its source type (Document, Article, Website), status,
+        associated groups, processing log, and file metadata.
+      parameters:
+        - $ref: "#/components/parameters/workspaceId"
+      responses:
+        "200":
+          description: Paginated list of vectors.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total:
+                    type: integer
+                    description: Total number of vectors.
+                    example: 21
+                  results:
+                    type: array
+                    description: Array of vector objects.
+                    items:
+                      $ref: "#/components/schemas/Vector"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /vector-groups:
+    post:
+      tags: [Vectors]
+      summary: Create vector group
+      description: Create a new vector group (knowledge base).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, workspaceId]
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                workspaceId:
+                  type: integer
+      responses:
+        "201":
+          description: Created vector group
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  name:
+                    type: string
+                  createdAt:
+                    type: string
+                    format: date-time
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /vector-groups/{groupId}:
+    get:
+      tags: [Vectors]
+      summary: Get vector group
+      description: Retrieve details of a specific vector group.
+      parameters:
+        - $ref: "#/components/parameters/groupId"
+      responses:
+        "200":
+          description: Vector group details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VectorGroup"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /vector-groups/{groupId}/vector-ids:
+    get:
+      tags: [Vectors]
+      summary: List vector IDs in group
+      description: List all vector IDs and their metadata within a vector group.
+      parameters:
+        - $ref: "#/components/parameters/groupId"
+      responses:
+        "200":
+          description: Vector IDs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        metadata:
+                          type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /vectors/stream/{workspaceId}:
+    post:
+      tags: [Vectors]
+      summary: Vector similarity search
+      description: Perform a similarity search against vectors in a workspace group.
+      parameters:
+        - $ref: "#/components/parameters/workspaceId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query, groupId]
+              properties:
+                query:
+                  type: string
+                groupId:
+                  type: integer
+                topK:
+                  type: integer
+                  default: 5
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/VectorSearchResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ──────────────────────────────────────────────
+  # Members
+  # ──────────────────────────────────────────────
+  /workspaces/{workspaceId}/members:
+    get:
+      tags: [Members]
+      summary: List workspace members
+      description: >-
+        List all members of the workspace (Team page). Returns both accepted
+        members and pending invitations. Each member includes a nested `user`
+        object (null for pending invitations where the user hasn't registered)
+        and a nested `workspace` summary.
+      parameters:
+        - $ref: "#/components/parameters/workspaceId"
+      responses:
+        "200":
+          description: Paginated list of workspace members.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total:
+                    type: integer
+                    description: Total number of members (including pending invitations).
+                    example: 7
+                  results:
+                    type: array
+                    description: Array of member objects.
+                    items:
+                      $ref: "#/components/schemas/Member"
+        "401":
+          description: Unauthorized – missing or invalid bearer token.
+
+  /workspaces/{workspaceId}/members/invite:
+    post:
+      tags: [Members]
+      summary: Invite member
+      description: Invite a new member to the workspace by email.
+      parameters:
+        - $ref: "#/components/parameters/workspaceId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, role]
+              properties:
+                email:
+                  type: string
+                  format: email
+                role:
+                  type: string
+      responses:
+        "201":
+          description: Invitation sent
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  inviteId:
+                    type: string
+                  email:
+                    type: string
+                  status:
+                    type: string
+                    example: pending
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ──────────────────────────────────────────────
+  # API Keys
+  # ──────────────────────────────────────────────
+  /workspaces/{workspaceId}/api-keys:
+    get:
+      tags: [API Keys]
+      summary: List API keys
+      description: >-
+        List all API keys for the workspace. Returns the full key value for
+        each key (unlike many APIs that mask it). Keys are returned with usage
+        statistics.
+      parameters:
+        - $ref: "#/components/parameters/workspaceId"
+      responses:
+        "200":
+          description: Paginated list of API keys.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total:
+                    type: integer
+                    description: Total number of API keys.
+                    example: 2
+                  results:
+                    type: array
+                    description: Array of API key objects.
+                    items:
+                      $ref: "#/components/schemas/ApiKeySummary"
+        "401":
+          description: Unauthorized – missing or invalid bearer token.
+    post:
+      tags: [API Keys]
+      summary: Create API key
+      description: Create a new API key for the workspace.
+      parameters:
+        - $ref: "#/components/parameters/workspaceId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+      responses:
+        "201":
+          description: Created API key (key value shown only once)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiKey"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /workspaces/{workspaceId}/api-keys/{keyId}:
+    delete:
+      tags: [API Keys]
+      summary: Delete API key
+      description: Permanently delete an API key.
+      parameters:
+        - $ref: "#/components/parameters/workspaceId"
+        - name: keyId
+          in: path
+          required: true
+          description: Numeric ID of the API key to delete.
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Successfully deleted
+        "401":
+          description: Unauthorized – missing or invalid bearer token.
+
+  # ──────────────────────────────────────────────
+  # Integrations
+  # ──────────────────────────────────────────────
+  /workspaces/{workspaceId}/integrations:
+    get:
+      tags: [Integrations]
+      summary: List integrations
+      description: >-
+        List all third-party integrations and credentials for the workspace.
+        Note: This endpoint may return 404 if no integrations feature is
+        enabled for the workspace.
+      parameters:
+        - $ref: "#/components/parameters/workspaceId"
+      responses:
+        "200":
+          description: List of integrations.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Integration"
+        "401":
+          description: Unauthorized – missing or invalid bearer token.
+        "404":
+          description: Not found – integrations feature may not be available for this workspace.
+    post:
+      tags: [Integrations]
+      summary: Create integration
+      description: Add a new third-party integration or credential.
+      parameters:
+        - $ref: "#/components/parameters/workspaceId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type, name, config]
+              properties:
+                type:
+                  type: string
+                name:
+                  type: string
+                config:
+                  type: object
+      responses:
+        "201":
+          description: Created integration
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  type:
+                    type: string
+                  name:
+                    type: string
+                  status:
+                    type: string
+                    example: active
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ──────────────────────────────────────────────
+  # Products
+  # ──────────────────────────────────────────────
+  /products/{productId}:
+    get:
+      tags: [Products]
+      summary: Get product
+      description: |
+        Retrieve subscription product/plan details by ID.
+        Returns pricing, credit allocations, resource limits, and feature flags
+        for a specific product plan.
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          description: Numeric product ID.
+          schema:
+            type: integer
+            example: 72
+      responses:
+        "200":
+          description: Product details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ──────────────────────────────────────────────
+  # Chat & Prompts
+  # ──────────────────────────────────────────────
+  /chat-preset-styles:
+    get:
+      tags: [Chat]
+      summary: List chat preset styles
+      description: |
+        Get preset writing style configurations for chat interfaces.
+        Each style contains a system prompt that instructs the LLM on tone,
+        format, and language behavior. Styles can be admin-preset or user-created.
+      responses:
+        "200":
+          description: Paginated list of chat preset styles.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total:
+                    type: integer
+                    description: Total number of preset styles.
+                    example: 5
+                  results:
+                    type: array
+                    description: Array of chat preset style objects.
+                    items:
+                      $ref: "#/components/schemas/ChatPresetStyle"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /agent-chat-windows:
+    get:
+      tags: [Chat]
+      summary: List agent chat windows
+      description: |
+        List agent chat window configurations for the workspace.
+        Returns chat window instances that can be embedded or used as standalone agents.
+      responses:
+        "200":
+          description: Paginated list of agent chat windows.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total:
+                    type: integer
+                    description: Total number of agent chat windows.
+                    example: 0
+                  results:
+                    type: array
+                    description: Array of agent chat window objects.
+                    items:
+                      $ref: "#/components/schemas/AgentChatWindow"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /sample-prompt-categories:
+    get:
+      tags: [Prompts]
+      summary: List sample prompt categories
+      description: |
+        Get categories for sample prompts shown on the dashboard.
+        Categories are typed as either "shortcut" (text-based prompts) or
+        "tools" (linked to specific node types like image/video generation).
+      responses:
+        "200":
+          description: Paginated list of prompt categories.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total:
+                    type: integer
+                    description: Total number of sample prompt categories.
+                    example: 9
+                  results:
+                    type: array
+                    description: Array of sample prompt category objects.
+                    items:
+                      $ref: "#/components/schemas/SamplePromptCategory"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /prompt-samples/llm:
+    get:
+      tags: [Prompts]
+      summary: List LLM prompt samples
+      description: |
+        Get sample LLM prompt templates for use in flow nodes.
+        Each sample includes a structured prompt with role, objective,
+        processing instructions, and output format. Samples may include
+        multilingual name/prompt/description values.
+      responses:
+        "200":
+          description: Paginated list of LLM prompt samples.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total:
+                    type: integer
+                    description: Total number of LLM prompt samples.
+                    example: 10
+                  results:
+                    type: array
+                    description: Array of prompt sample objects.
+                    items:
+                      $ref: "#/components/schemas/PromptSample"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+# ══════════════════════════════════════════════════
+# Components
+# ══════════════════════════════════════════════════
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Session token obtained from /auth/login
+    apiKey:
+      type: apiKey
+      in: header
+      name: x-api-key
+      description: Workspace API key
+
+  responses:
+    Unauthorized:
+      description: Authentication failed - invalid or expired Bearer token or API key.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            detail: "Not authenticated"
+    NotFound:
+      description: The requested resource was not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            detail: "Not found"
+
+  parameters:
+    workspaceId:
+      name: workspaceId
+      in: path
+      required: true
+      schema:
+        type: integer
+      description: Workspace ID
+    builderId:
+      name: builderId
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Builder/flow ID
+    groupId:
+      name: groupId
+      in: path
+      required: true
+      schema:
+        type: integer
+      description: Vector group ID
+
+  schemas:
+    ErrorResponse:
+      type: object
+      description: Standard error response returned by the API.
+      properties:
+        detail:
+          type: string
+          description: Human-readable error message.
+          example: "Not found"
+
+    UserSummary:
+      type: object
+      description: Compact user summary used in nested objects (e.g. createdBy, owner).
+      properties:
+        id:
+          type: integer
+          description: User ID.
+          example: 276
+        email:
+          type: string
+          format: email
+          description: User email address.
+          example: "user@example.com"
+        fullName:
+          type: string
+          description: User display name.
+          example: "John Doe"
+        credit:
+          type: integer
+          nullable: true
+          description: User credit balance.
+        avatar:
+          type: string
+          nullable: true
+          description: URL to user avatar image.
+          example: "https://example.com/avatar.jpg"
+        color:
+          type: string
+          description: Hex color assigned to the user for UI display.
+          example: "#9c899e"
+        isProfileVerified:
+          type: boolean
+          nullable: true
+          description: Whether the user profile is verified.
+
+    User:
+      type: object
+      description: Full user profile returned by /users/me.
+      properties:
+        id:
+          type: integer
+          description: Numeric user ID.
+          example: 1001
+        username:
+          type: string
+          description: Unique username.
+          example: "johndoe42"
+        avatar:
+          type: string
+          nullable: true
+          description: URL to user avatar image.
+          example: "https://example.com/avatar.jpg"
+        numBot:
+          type: integer
+          description: Number of bots created by the user.
+          example: 0
+        email:
+          type: string
+          format: email
+          description: User email address.
+          example: "user@example.com"
+        fullName:
+          type: string
+          description: User display name.
+          example: "John Doe"
+        teamSize:
+          type: string
+          nullable: true
+          description: Team size selection from onboarding.
+        companyName:
+          type: string
+          nullable: true
+          description: Company name.
+        location:
+          type: string
+          nullable: true
+          description: User location.
+        companySize:
+          type: string
+          nullable: true
+          description: Company size range.
+          example: "201 - 500"
+        phoneNumber:
+          type: string
+          nullable: true
+          description: Phone number.
+        phoneCode:
+          type: string
+          nullable: true
+          description: Phone country code.
+        category:
+          type: string
+          nullable: true
+          description: Industry category selected during onboarding.
+          example: "Technology & Software"
+        goalOptions:
+          type: string
+          nullable: true
+          description: User goal selection from onboarding.
+          example: "Streamline response to RFP generation"
+        isActive:
+          type: boolean
+          description: Whether the user account is active.
+          example: true
+        isVerified:
+          type: boolean
+          nullable: true
+          description: Whether the user email is verified.
+        logo:
+          type: string
+          nullable: true
+          description: Custom logo URL.
+        color:
+          type: string
+          description: Hex color assigned to the user for UI display.
+          example: "#d3c3cf"
+        role:
+          type: string
+          description: Global user role.
+          example: "Customer"
+        createdBy:
+          type: string
+          description: Account creator role.
+          example: "Customer"
+        changePassword:
+          type: boolean
+          description: Whether the user needs to change password.
+          example: false
+        lastLogin:
+          type: string
+          format: date-time
+          nullable: true
+          description: Last login timestamp.
+        accountType:
+          type: string
+          description: Account tier type.
+          enum: [BASIC, PRO, ENTERPRISE]
+          example: "BASIC"
+        accountUniqueId:
+          type: string
+          description: Unique account identifier.
+          example: "EvWirsqCOLLqsOusTEKz5V"
+        credit:
+          type: integer
+          nullable: true
+          description: User credit balance.
+        whitelistDomain:
+          type: string
+          nullable: true
+          description: Whitelisted domain for the account.
+        createdAt:
+          type: string
+          format: date-time
+          description: Account creation timestamp.
+          example: "2025-07-30T02:46:45.251162Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last profile update timestamp.
+          example: "2025-07-30T02:47:41.966535Z"
+        onboardingData:
+          type: object
+          nullable: true
+          description: Onboarding survey responses.
+        apiKey:
+          type: string
+          description: User personal API key (UUID format).
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        source:
+          type: string
+          nullable: true
+          description: Registration source.
+        googleId:
+          type: string
+          nullable: true
+          description: Google OAuth user ID.
+        facebookId:
+          type: string
+          nullable: true
+          description: Facebook OAuth user ID.
+        defineYou:
+          type: object
+          nullable: true
+          description: User role/persona selected during onboarding.
+          properties:
+            id:
+              type: integer
+              description: Persona option ID.
+              example: 6
+            title:
+              type: string
+              description: Persona title.
+              example: "Engineer/Developer"
+        profileInfo:
+          type: object
+          nullable: true
+          description: Extended profile information.
+        isPublicProfile:
+          type: boolean
+          nullable: true
+          description: Whether the user profile is publicly visible.
+        isProfileVerified:
+          type: boolean
+          nullable: true
+          description: Whether the user profile is verified.
+
+    WorkspaceSummary:
+      type: object
+      description: Summary of a workspace returned in list endpoints.
+      properties:
+        id:
+          type: integer
+          description: Workspace ID.
+          example: 256
+        workspaceName:
+          type: string
+          description: Display name of the workspace.
+          example: "My workspace"
+        subdomain:
+          type: string
+          description: Workspace subdomain.
+          example: "myworkspace"
+        role:
+          type: string
+          description: Current user role in this workspace.
+          example: "Administrator"
+
+    Workspace:
+      type: object
+      description: Full workspace details including resource usage and owner info.
+      properties:
+        id:
+          type: integer
+          description: Workspace ID.
+          example: 256
+        workspaceName:
+          type: string
+          description: Display name of the workspace.
+          example: "My workspace"
+        avatar:
+          type: string
+          nullable: true
+          description: Workspace avatar URL.
+        appearanceConfig:
+          type: object
+          nullable: true
+          description: Custom appearance configuration.
+        metaConfig:
+          type: object
+          nullable: true
+          description: Metadata configuration.
+        plan:
+          type: string
+          nullable: true
+          description: Current subscription plan name.
+        totalCreditsReceived:
+          type: integer
+          description: Total credits ever received by this workspace.
+          example: 10000
+        currentCredits:
+          type: integer
+          description: Current remaining credits.
+          example: 7727
+        purchaseCredits:
+          type: integer
+          nullable: true
+          description: Credits purchased (separate from plan credits).
+        subdomain:
+          type: string
+          description: Workspace subdomain for hosted apps.
+          example: "myworkspace"
+        customDomain:
+          type: string
+          nullable: true
+          description: Custom domain for the workspace.
+        createdAt:
+          type: string
+          format: date-time
+          description: Workspace creation timestamp.
+          example: "2024-03-04T11:08:00.981249Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last update timestamp.
+          example: "2026-03-18T15:30:23.118962Z"
+        totalFlowsAmount:
+          type: integer
+          nullable: true
+          description: Total flows limit (null = unlimited).
+        currentAutomationAmount:
+          type: integer
+          description: Current number of automation builders.
+          example: 43
+        currentAppAmount:
+          type: integer
+          description: Current number of app/form builders.
+          example: 76
+        currentChatbotAmount:
+          type: integer
+          description: Current number of chatbot builders.
+          example: 34
+        totalTablesAmount:
+          type: integer
+          nullable: true
+          description: Total tables limit (null = unlimited).
+        currentTablesAmount:
+          type: integer
+          description: Current number of database tables.
+          example: 5
+        totalPagesAmount:
+          type: integer
+          nullable: true
+          description: Total pages limit (null = unlimited).
+        currentPagesAmount:
+          type: integer
+          description: Current number of pages/documents.
+          example: 5
+        totalUsersAmount:
+          type: integer
+          nullable: true
+          description: Total team members limit (null = unlimited).
+        currentUsersAmount:
+          type: integer
+          description: Current number of team members.
+          example: 7
+        totalVectorAmount:
+          type: integer
+          nullable: true
+          description: Total vector storage limit (null = unlimited).
+        currentVectorAmount:
+          type: number
+          format: double
+          description: Current vector storage usage.
+          example: 0.000816
+        totalStorageAmount:
+          type: integer
+          nullable: true
+          description: Total file storage limit (null = unlimited).
+        currentStorageAmount:
+          type: number
+          format: double
+          description: Current file storage usage in MB.
+          example: 0.246
+        featureRemoveLogo:
+          type: boolean
+          description: Whether the workspace can remove Diaflow branding.
+          example: true
+        featureCustomDomain:
+          type: boolean
+          description: Whether the workspace can use a custom domain.
+          example: true
+        owner:
+          $ref: "#/components/schemas/UserSummary"
+
+    WorkspaceMembership:
+      type: object
+      description: Current user membership details within a workspace.
+      properties:
+        id:
+          type: integer
+          description: Membership record ID.
+          example: 9794
+        workspaceId:
+          type: integer
+          description: Workspace ID.
+          example: 256
+        userId:
+          type: integer
+          description: User ID.
+          example: 4606
+        role:
+          type: string
+          description: User role within the workspace.
+          enum: [Owner, Administrator, Editor, Viewer]
+          example: "Administrator"
+        lastLogin:
+          type: string
+          format: date-time
+          nullable: true
+          description: Last login timestamp for this workspace.
+        builders:
+          type: array
+          nullable: true
+          description: Builders accessible to this member (null = all).
+          items:
+            type: object
+        createdAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Membership creation timestamp.
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Last membership update timestamp.
+        user:
+          $ref: "#/components/schemas/UserSummary"
+        owner:
+          $ref: "#/components/schemas/UserSummary"
+        isOwner:
+          type: boolean
+          description: Whether the current user is the workspace owner.
+          example: false
+        subdomain:
+          type: string
+          description: Workspace subdomain.
+          example: "myworkspace"
+
+    Subscription:
+      type: object
+      description: Workspace subscription and billing plan details.
+      properties:
+        amount:
+          type: number
+          format: double
+          description: Subscription price amount.
+          example: 0.0
+        cycle:
+          type: string
+          description: Billing cycle.
+          enum: [monthly, yearly]
+          example: "monthly"
+        plan:
+          type: string
+          description: Subscription plan name.
+          example: "Pro Trial"
+        validFrom:
+          type: string
+          format: date-time
+          description: Subscription start date.
+          example: "2025-07-14T17:00:00Z"
+        validTo:
+          type: string
+          format: date-time
+          nullable: true
+          description: Subscription end date (null = no expiry).
+        nextBilling:
+          type: string
+          format: date-time
+          nullable: true
+          description: Next billing date.
+        nextResetCreditDate:
+          type: string
+          format: date-time
+          description: Next credit reset date.
+          example: "2026-04-04T12:07:33.790992Z"
+        nextPriceId:
+          type: string
+          nullable: true
+          description: Next billing price ID (for plan changes).
+        nextPackageId:
+          type: string
+          nullable: true
+          description: Next package ID (for plan changes).
+        nextProductId:
+          type: string
+          nullable: true
+          description: Next product ID (for plan changes).
+        createdAt:
+          type: string
+          format: date-time
+          description: Subscription creation timestamp.
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last subscription update timestamp.
+        productId:
+          type: integer
+          description: Current product/plan ID.
+          example: 72
+        priceId:
+          type: string
+          nullable: true
+          description: Current price ID.
+        packageId:
+          type: string
+          nullable: true
+          description: Current package ID.
+        status:
+          type: string
+          description: Subscription status.
+          enum: [active, canceled, past_due, trialing]
+          example: "active"
+        nextProduct:
+          type: object
+          nullable: true
+          description: Next product details (for pending plan changes).
+        nextPackage:
+          type: object
+          nullable: true
+          description: Next package details (for pending plan changes).
+        product:
+          $ref: "#/components/schemas/Product"
+
+    # ── Builder Schemas ──
+
+    CreatedByUser:
+      type: object
+      description: Summary of the user who created the builder.
+      properties:
+        id:
+          type: integer
+          description: User ID.
+          example: 276
+        email:
+          type: string
+          format: email
+          description: User's email address.
+          example: "user@example.com"
+        fullName:
+          type: string
+          description: User's display name.
+          example: "User Name"
+        avatar:
+          type: string
+          nullable: true
+          description: URL to the user's avatar image.
+        color:
+          type: string
+          description: Hex color assigned to the user.
+          example: "#9c899e"
+        credit:
+          type: integer
+          nullable: true
+        isProfileVerified:
+          type: boolean
+          nullable: true
+
+    Connector:
+      type: object
+      description: An edge/connection between two nodes in the flow graph.
+      properties:
+        id:
+          type: string
+          description: Unique edge identifier.
+          example: "edge-1760342277204"
+        source:
+          type: string
+          description: Source node ID.
+          example: "trigger"
+        sourceHandle:
+          type: string
+          nullable: true
+          description: Source handle (for nodes with multiple outputs).
+        target:
+          type: string
+          description: Target node ID.
+          example: "openai-0"
+        targetHandle:
+          type: string
+          nullable: true
+          description: Target handle (for nodes with multiple inputs).
+        animated:
+          type: boolean
+          description: Whether the edge is animated in the UI.
+          example: true
+        type:
+          type: string
+          description: Edge rendering type.
+          example: "smoothstep"
+
+    FlowNode:
+      type: object
+      description: A node in the flow graph (trigger, LLM, tool, output, etc.).
+      properties:
+        id:
+          type: string
+          description: Node identifier within the flow.
+          example: "openai-0"
+        width:
+          type: integer
+          description: Node width in pixels.
+          example: 334
+        height:
+          type: integer
+          description: Node height in pixels.
+          example: 645
+        type:
+          type: string
+          description: Node component type (e.g. trigger, openai, output, branch, google_sheets_p, py, json-formatter, pdf-img, ddb).
+          example: "openai"
+        cusNodeType:
+          type: string
+          nullable: true
+          description: Custom node type override.
+        position:
+          type: object
+          description: Node position in the canvas.
+          properties:
+            x:
+              type: number
+            y:
+              type: number
+        data:
+          type: object
+          description: Node-specific configuration (model, prompt, system message, config, etc.).
+        positionAbsolute:
+          type: object
+          description: Absolute position in the canvas.
+          properties:
+            x:
+              type: number
+            y:
+              type: number
+        idNode:
+          type: string
+          description: Globally unique node identifier with UUID suffix.
+          example: "openai-0-c140522a-ffe7-48f3-a770-d46081e51e40"
+
+    BuilderData:
+      type: object
+      description: The flow graph data containing all nodes and connectors.
+      properties:
+        connectors:
+          type: array
+          description: Edges connecting nodes in the flow.
+          items:
+            $ref: "#/components/schemas/Connector"
+        nodes:
+          type: array
+          description: All nodes in the flow.
+          items:
+            $ref: "#/components/schemas/FlowNode"
+
+    BuilderAudit:
+      type: object
+      description: Last test/audit result for the builder.
+      nullable: true
+      properties:
+        node:
+          type: array
+          description: Per-node audit results.
+          items:
+            type: object
+        status:
+          type: string
+          description: Overall audit status.
+          enum: [Done, Error]
+
+    InlineInterfaceSummary:
+      type: object
+      description: Inline interface summary returned with builder list items.
+      nullable: true
+      properties:
+        builderCode:
+          type: string
+          description: Builder uniqueId this interface belongs to.
+          example: "Dx6c64YWYk"
+        name:
+          type: string
+          description: Interface display name.
+        botLogo:
+          type: string
+          nullable: true
+        primaryColor:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        lastInteraction:
+          type: string
+          format: date-time
+          nullable: true
+        description:
+          type: string
+          nullable: true
+
+    InlineChatInterfaceSummary:
+      type: object
+      description: Inline chat interface summary returned with builder list items.
+      nullable: true
+      properties:
+        builderCode:
+          type: string
+          description: Builder uniqueId this chat interface belongs to.
+          example: "Dx6c64YWYk"
+        logo:
+          type: string
+          nullable: true
+        title:
+          type: string
+          description: Chat interface title.
+        linkedFlow:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        lastInteraction:
+          type: string
+          format: date-time
+          nullable: true
+        description:
+          type: string
+          nullable: true
+
+    Builder:
+      type: object
+      description: |
+        A flow builder object. Contains the full flow graph in the data field,
+        builder metadata, and optional inline interface summaries.
+      properties:
+        id:
+          type: integer
+          description: Numeric builder ID.
+          example: 38288
+        uniqueId:
+          type: string
+          description: Alphanumeric unique identifier used in URLs and API paths.
+          example: "pEBHQNskat"
+        title:
+          type: string
+          description: Display name of the builder.
+          example: "My Chatbot"
+        workspaceId:
+          type: integer
+          description: Workspace this builder belongs to.
+          example: 256
+        interfaceType:
+          type: string
+          description: Builder interface type.
+          enum: [form, chat, automation, scheduled]
+          example: "chat"
+        triggerType:
+          type: string
+          description: How the flow is triggered.
+          example: "inputs"
+        version:
+          type: string
+          description: Builder version status.
+          enum: [draft, publish]
+          example: "draft"
+        isActive:
+          type: boolean
+          description: Whether the builder is active.
+          example: true
+        enableAccess:
+          type: boolean
+          description: Whether public access is enabled.
+          example: false
+        enableApi:
+          type: boolean
+          description: Whether API execution is enabled.
+          example: false
+        isSubflow:
+          type: boolean
+          description: Whether this builder is used as a subflow.
+          example: false
+        webhookEnable:
+          type: boolean
+          description: Whether webhook trigger is enabled.
+          example: false
+        webhookExpire:
+          type: string
+          format: date-time
+          nullable: true
+          description: Webhook expiration time.
+        webhookInput:
+          type: object
+          nullable: true
+          description: Webhook input configuration.
+        isInternalApp:
+          type: boolean
+          nullable: true
+          description: Whether this is an internal app.
+        mode:
+          type: string
+          nullable: true
+          description: Builder mode.
+        plan:
+          type: string
+          nullable: true
+          description: Associated plan.
+        templateId:
+          type: integer
+          nullable: true
+          description: Template ID if created from a template.
+        chatBotId:
+          type: string
+          nullable: true
+          description: Associated chatbot ID.
+        resultConfiguration:
+          type: object
+          nullable: true
+          description: Result configuration settings.
+        note:
+          type: string
+          nullable: true
+          description: Builder notes.
+        simpleChatData:
+          type: object
+          nullable: true
+          description: Simple chat mode data.
+        metaData:
+          type: object
+          nullable: true
+          description: Additional metadata (e.g. is_new_version flag).
+        createdById:
+          type: integer
+          description: User ID of the creator.
+          example: 276
+        data:
+          $ref: "#/components/schemas/BuilderData"
+        audit:
+          $ref: "#/components/schemas/BuilderAudit"
+        createdBy:
+          $ref: "#/components/schemas/CreatedByUser"
+        interface:
+          $ref: "#/components/schemas/InlineInterfaceSummary"
+        interfaceChat:
+          $ref: "#/components/schemas/InlineChatInterfaceSummary"
+        runCount:
+          type: integer
+          description: Total number of executions.
+          example: 0
+        createdAt:
+          type: string
+          format: date-time
+          description: Creation timestamp.
+          example: "2025-11-18T12:52:28.486957Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last update timestamp.
+          example: "2025-11-18T12:52:28.486962Z"
+
+    PaginatedBuilders:
+      type: object
+      description: Paginated response for builder listings.
+      properties:
+        total:
+          type: integer
+          description: Total number of builders matching the query.
+          example: 154
+        results:
+          type: array
+          description: Array of builder objects for the current page.
+          items:
+            $ref: "#/components/schemas/Builder"
+
+    ExecutionResult:
+      type: object
+      properties:
+        runId:
+          type: string
+        status:
+          type: string
+        output:
+          type: object
+
+    # ── Interface Schemas ──
+
+    InterfaceComponent:
+      type: object
+      description: A UI component in the interface (input field or output display).
+      properties:
+        id:
+          type: string
+          description: Component identifier.
+          example: "1760502826936"
+        error:
+          type: boolean
+          description: Whether this component has an error.
+          example: false
+        title:
+          type: string
+          description: Component display label.
+          example: "Legal"
+        value:
+          type: string
+          description: Component value or template expression.
+          example: "{{}}"
+        result:
+          type: object
+          nullable: true
+          description: Last execution result for this component.
+        is_done:
+          type: boolean
+          description: Whether the component has completed.
+          example: false
+        node_type:
+          type: string
+          description: "Node type: fixed, custom, etc."
+          example: "fixed"
+        config_type:
+          type: string
+          description: "Configuration type: output, input."
+          example: "output"
+        output_type:
+          type: string
+          description: "Output rendering type: text, image, table, etc."
+          example: "text"
+        is_formatted:
+          type: boolean
+          description: Whether the output should be formatted (e.g. Markdown).
+          example: true
+        error_message:
+          type: string
+          description: Error message if component failed.
+          example: ""
+        input_type:
+          type: string
+          description: Input field type (for input components).
+          example: "long_text"
+        input_label:
+          type: string
+          description: Label for the input field.
+          example: "Input"
+        placeholder:
+          type: string
+          description: Placeholder text for the input field.
+          example: "Enter content"
+        default_value:
+          type: string
+          nullable: true
+          description: Default value for the input field.
+        variable_name:
+          type: string
+          description: Variable name for referencing this component in the flow.
+          example: "input"
+
+    Interface:
+      type: object
+      description: |
+        Form/app interface configuration for a published builder.
+        Contains display settings, component definitions, and the embedded builder flow.
+      properties:
+        id:
+          type: integer
+          description: Interface record ID.
+          example: 4294
+        name:
+          type: string
+          description: Interface display name.
+          example: "App #Dx6c64YWYk"
+        primaryColor:
+          type: string
+          nullable: true
+          description: Primary theme color (hex).
+        buttonTheme:
+          type: string
+          nullable: true
+          description: Button theme style.
+        widgetTheme:
+          type: string
+          nullable: true
+          description: Widget theme style.
+        botLogo:
+          type: string
+          nullable: true
+          description: URL of the bot logo image.
+        banner:
+          type: string
+          nullable: true
+          description: URL of the banner image.
+        welcomeMessage:
+          type: string
+          nullable: true
+          description: Welcome message displayed to users.
+        isHidePowered:
+          type: boolean
+          description: Whether to hide the "Powered by Diaflow" branding.
+          example: false
+        component:
+          type: array
+          description: UI components (inputs and outputs) for the interface.
+          items:
+            $ref: "#/components/schemas/InterfaceComponent"
+        builderCode:
+          type: string
+          description: Builder uniqueId this interface belongs to.
+          example: "Dx6c64YWYk"
+        security:
+          type: string
+          description: Access security level.
+          enum: [public, private]
+          example: "public"
+        lastInteraction:
+          type: string
+          format: date-time
+          nullable: true
+          description: Timestamp of the last user interaction.
+        description:
+          type: string
+          nullable: true
+          description: Interface description.
+        builder:
+          $ref: "#/components/schemas/Builder"
+        newVersion:
+          type: boolean
+          nullable: true
+          description: Whether a new version is pending publish.
+
+    ChatInterface:
+      type: object
+      description: |
+        Chat widget interface configuration for a published builder.
+        Contains full chat widget styling, welcome messages, opening questions,
+        customer data collection settings, and the embedded builder flow.
+      properties:
+        id:
+          type: integer
+          description: Chat interface record ID.
+          example: 4192
+        linkedFlow:
+          type: string
+          nullable: true
+          description: Linked flow identifier.
+        title:
+          type: string
+          description: Chat window title.
+          example: "App #Dx6c64YWYk"
+        tagline:
+          type: string
+          description: Chat window tagline/subtitle.
+          example: "Dazzle your customer with super-charged chatbot"
+        logo:
+          type: string
+          nullable: true
+          description: URL of the chat logo image.
+        cover:
+          type: string
+          nullable: true
+          description: URL of the chat cover image.
+        widgetTheme:
+          type: string
+          description: Widget visual theme.
+          example: "creative"
+        primaryColor:
+          type: string
+          description: Primary theme color (hex).
+          example: "#F4F2EE"
+        isHidePowered:
+          type: boolean
+          description: Whether to hide the "Powered by Diaflow" branding.
+          example: false
+        callToActionButton:
+          type: string
+          description: Text on the chat trigger button.
+          example: "Hi there! 👋"
+        callToActionButtonSubtitle:
+          type: string
+          description: Subtitle text below the trigger button.
+          example: "Chat with us"
+        isShowContact:
+          type: boolean
+          description: Whether to show contact information.
+          example: true
+        contactInfo:
+          type: object
+          nullable: true
+          description: Contact information configuration.
+        isAskCustomerInformation:
+          type: boolean
+          description: Whether to collect customer information before chat.
+          example: true
+        hasAllowChatAsGuest:
+          type: boolean
+          description: Whether guests can chat without providing info.
+          example: true
+        dataToCollect:
+          type: array
+          description: Fields to collect from the user.
+          items:
+            type: object
+        welcomeMessage:
+          type: string
+          description: Welcome message in the chat window.
+          example: "Hi there! 👋 I'm here to help you."
+        initialQuestion:
+          type: array
+          description: Initial question suggestions.
+          items:
+            type: object
+            properties:
+              value:
+                type: string
+        isMixUpQuestion:
+          type: boolean
+          description: Whether to randomize the order of opening questions.
+          example: false
+        component:
+          type: array
+          description: UI components for the chat interface.
+          items:
+            $ref: "#/components/schemas/InterfaceComponent"
+        inputNode:
+          type: object
+          nullable: true
+          description: Input node configuration for the chat trigger.
+          properties:
+            id:
+              type: integer
+              description: Input component ID.
+              example: 1760502714252
+            value:
+              type: string
+              nullable: true
+              description: Default value.
+            input_type:
+              type: string
+              description: Input field type.
+              example: "long_text"
+            input_label:
+              type: string
+              description: Input field label.
+              example: "Input"
+            placeholder:
+              type: string
+              description: Input placeholder text.
+              example: "Enter content"
+            default_value:
+              type: string
+              nullable: true
+              description: Default value for the input.
+            variable_name:
+              type: string
+              description: Variable name for referencing in the flow.
+              example: "input"
+        builderCode:
+          type: string
+          description: Builder uniqueId this chat interface belongs to.
+          example: "Dx6c64YWYk"
+        security:
+          type: string
+          description: Access security level.
+          enum: [public, private]
+          example: "public"
+        lastInteraction:
+          type: string
+          format: date-time
+          nullable: true
+          description: Timestamp of the last user interaction.
+        whitelist:
+          type: array
+          nullable: true
+          description: Whitelisted domains for embedding.
+          items:
+            type: string
+        description:
+          type: string
+          nullable: true
+          description: Chat interface description.
+        openingQuestions:
+          type: array
+          nullable: true
+          description: Pre-defined opening question suggestions.
+          items:
+            type: string
+        metaData:
+          type: object
+          nullable: true
+          description: Widget display metadata (position, button style, margins).
+          properties:
+            prominenceType:
+              type: string
+              description: Widget prominence style.
+              example: "button_and_text"
+            prominenceText:
+              type: string
+              description: Prominence text displayed alongside button.
+              example: "👋 Hello there! How can we help you?"
+            buttonDisplay:
+              type: string
+              description: Button display mode.
+              example: "icon_only"
+            position:
+              type: string
+              description: Widget position on screen.
+              example: "right"
+            marginDesktop:
+              type: string
+              description: Desktop margin in pixels.
+              example: "20"
+            marginMobile:
+              type: string
+              description: Mobile margin in pixels.
+              example: "20"
+            widgetIcon:
+              type: string
+              nullable: true
+              description: Custom widget icon URL.
+            buttonText:
+              type: string
+              description: Button label text.
+              example: "Chat now"
+        builder:
+          $ref: "#/components/schemas/Builder"
+
+    # ── History Schemas ──
+
+    HistoryNodeAction:
+      type: object
+      description: Per-node execution result within a history record.
+      properties:
+        id:
+          type: string
+          description: Node ID.
+          example: "ddb-0"
+        node:
+          type: string
+          description: Node component type.
+          example: "ddb"
+        start:
+          type: number
+          format: double
+          description: Unix timestamp when node execution started.
+        end:
+          type: number
+          format: double
+          description: Unix timestamp when node execution ended.
+        latency:
+          type: number
+          format: double
+          description: Node execution duration in seconds.
+          example: 1.17
+        status:
+          type: string
+          description: Node execution status.
+          example: "Successful"
+        error:
+          type: string
+          nullable: true
+          description: Error message if node failed.
+        model:
+          type: string
+          description: AI model used (if applicable).
+          example: "gpt-4o-mini"
+        credit:
+          type: integer
+          description: Credits consumed by this node.
+          example: 0
+        input:
+          type: object
+          description: Input data passed to the node.
+        output:
+          type: object
+          description: Output data produced by the node.
+        query:
+          type: string
+          nullable: true
+          description: SQL or search query generated (for database/search nodes).
+        input_token:
+          type: integer
+          description: Number of input tokens (for LLM nodes).
+          example: 373
+        output_token:
+          type: integer
+          description: Number of output tokens (for LLM nodes).
+          example: 72
+        node_order:
+          type: integer
+          description: Execution order of this node.
+          example: 1
+
+    HistoryBuilderRef:
+      type: object
+      description: Reference to the builder that was executed.
+      properties:
+        title:
+          type: string
+          description: Builder display name.
+          example: "App #2cz0BxX413"
+        uniqueId:
+          type: string
+          description: Builder unique identifier.
+          example: "2cz0BxX413"
+        interfaceType:
+          type: string
+          description: Builder interface type (e.g. form, chat, scheduled, api).
+          example: "form"
+        isInternalApp:
+          type: boolean
+          nullable: true
+          description: Whether this is an internal (non-public) app.
+        version:
+          type: string
+          nullable: true
+          description: Builder version that was executed (e.g. "draft", "published").
+          example: "draft"
+        interface:
+          type: object
+          nullable: true
+          description: Interface configuration object (if applicable).
+        deletedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Timestamp when the builder was deleted, or null if active.
+
+    HistoryApiKey:
+      type: object
+      description: API key that triggered the execution (if applicable).
+      nullable: true
+      properties:
+        id:
+          type: integer
+          description: API key ID.
+          example: 1831
+        name:
+          type: string
+          description: API key display name.
+          example: "My API Key"
+        key:
+          type: string
+          description: The API key value.
+          example: "sk-1fa7ff22a4154b22b24a59f070d9ca9d"
+        numUsed:
+          type: integer
+          description: Number of times this key has been used.
+          example: 15
+        lastUsed:
+          type: string
+          format: date-time
+          description: Timestamp of last usage.
+        userId:
+          type: integer
+        workspaceId:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    HistorySummary:
+      type: object
+      description: A single execution history record.
+      properties:
+        id:
+          type: integer
+          description: Numeric history record ID.
+          example: 370391
+        sessionId:
+          type: string
+          format: uuid
+          description: Unique session identifier for the execution.
+          example: "ec5d16ee-f5af-4037-9633-811248829c00"
+        builderId:
+          type: integer
+          description: Numeric ID of the executed builder.
+          example: 28020
+        templateId:
+          type: integer
+          nullable: true
+          description: Template ID if builder was from a template.
+        userId:
+          type: integer
+          description: User ID who triggered the execution.
+          example: 276
+        workspaceId:
+          type: integer
+          description: Workspace ID.
+          example: 256
+        status:
+          type: string
+          description: Execution status.
+          enum: [Completed, Error, Running, Cancelled]
+          example: "Completed"
+        section:
+          type: string
+          description: Where the execution was triggered from.
+          example: "Preview on website"
+        input:
+          type: object
+          nullable: true
+          description: Input data provided to the flow.
+        output:
+          type: object
+          nullable: true
+          description: Output data from the flow. Contains a data field with the results.
+        models:
+          type: array
+          description: AI models used during execution.
+          items:
+            type: string
+          example: ["gpt-4o-mini"]
+        latency:
+          type: number
+          format: double
+          description: Total execution latency in seconds.
+          example: 0.23
+        logType:
+          type: string
+          description: Type of execution log.
+          example: "webhook"
+        via:
+          type: string
+          description: "Trigger channel (e.g. Webhook, Public App, Internal App, Test, API)."
+          example: "Webhook"
+        credit:
+          type: integer
+          description: Total credits consumed.
+          example: 0
+        totalConversation:
+          type: integer
+          description: Total conversation count (for chat-type builders).
+          example: 0
+        start:
+          type: string
+          format: date-time
+          description: Execution start timestamp.
+          example: "2025-07-21T12:12:02.483773Z"
+        end:
+          type: string
+          format: date-time
+          description: Execution end timestamp.
+          example: "2025-07-21T12:12:02.712821Z"
+        meta:
+          type: object
+          nullable: true
+          description: Execution metadata.
+          properties:
+            config:
+              type: object
+              description: Builder configuration snapshot.
+              properties:
+                title:
+                  type: string
+                unique_id:
+                  type: string
+                interface_type:
+                  type: string
+        action:
+          type: object
+          description: |
+            Per-node action results keyed by node ID.
+            Each value is a HistoryNodeAction object.
+          additionalProperties:
+            $ref: "#/components/schemas/HistoryNodeAction"
+        builder:
+          $ref: "#/components/schemas/HistoryBuilderRef"
+        user:
+          type: object
+          description: User who triggered the execution.
+          properties:
+            id:
+              type: integer
+              description: User ID.
+              example: 276
+            email:
+              type: string
+              format: email
+              description: User's email address.
+              example: "user@example.com"
+            fullName:
+              type: string
+              description: User's display name.
+              example: "User Name"
+            avatar:
+              type: string
+              nullable: true
+              description: URL to the user's avatar image.
+              example: "https://example.com/avatar.jpg"
+            color:
+              type: string
+              description: Hex color assigned to the user.
+              example: "#9c899e"
+            credit:
+              type: number
+              nullable: true
+              description: User's remaining credit balance.
+            isProfileVerified:
+              type: boolean
+              nullable: true
+              description: Whether the user's profile is verified.
+        apiKey:
+          $ref: "#/components/schemas/HistoryApiKey"
+        createdAt:
+          type: string
+          format: date-time
+          example: "2025-07-21T12:12:02.531605Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2025-07-21T12:12:02.725320Z"
+
+    HistoryDetail:
+      description: |
+        Execution history detail. Has the same shape as HistorySummary
+        (the list and detail endpoints return the same object structure).
+        The action map contains full per-node execution data including input/output payloads.
+      allOf:
+        - $ref: "#/components/schemas/HistorySummary"
+
+    PaginatedHistories:
+      type: object
+      description: Paginated response for execution history listings.
+      properties:
+        total:
+          type: integer
+          description: Total number of history records matching the query.
+          example: 334
+        results:
+          type: array
+          description: Array of history records for the current page.
+          items:
+            $ref: "#/components/schemas/HistorySummary"
+
+    Component:
+      type: object
+      description: A flow node component type (AI model, integration, utility, etc.).
+      properties:
+        id:
+          type: integer
+          description: Numeric component ID.
+          example: 225
+        icon:
+          type: string
+          nullable: true
+          description: URL or path to the component icon image.
+          example: "https://assets.pipedream.net/s.v0/app_OkrhR1/logo/orig"
+        title:
+          type: string
+          description: Display name of the component.
+          example: "OpenRouter (BYOK)"
+        description:
+          type: string
+          nullable: true
+          description: Brief description of the component's purpose.
+          example: "Use OpenRouter's models with your own API Key"
+        nodeId:
+          type: string
+          description: Unique node identifier used in flow definitions.
+          example: "openrouterc"
+        data:
+          type: object
+          nullable: true
+          description: Additional component configuration data.
+        selected:
+          type: boolean
+          nullable: true
+          description: Whether the component is currently selected in the UI.
+        isRoot:
+          type: boolean
+          description: Whether this component can be a root/trigger node.
+          example: true
+        infoLink:
+          type: string
+          nullable: true
+          description: URL to the component's documentation page.
+          example: "https://docs.diaflow.io/flows/component-reference/public-ai-llm-models/openrouter"
+        diagnostics:
+          type: string
+          nullable: true
+          description: Diagnostic information or notes about the component.
+        isPipedream:
+          type: boolean
+          description: Whether this is a Pipedream-powered integration.
+          example: false
+        pipedreamSlugName:
+          type: string
+          nullable: true
+          description: Pipedream integration slug name (if isPipedream is true).
+          example: "slack"
+        pipedreamAppId:
+          type: string
+          nullable: true
+          description: Pipedream application ID.
+          example: "app_OkrhR1"
+        pipedreamUnit:
+          type: string
+          nullable: true
+          description: Unit of measurement for Pipedream pricing (e.g. "request").
+          example: "request"
+        pipedreamInputCredit:
+          type: number
+          nullable: true
+          description: Credit cost per input for Pipedream components.
+          example: 0
+        pipedreamOutputCredit:
+          type: number
+          nullable: true
+          description: Credit cost per output for Pipedream components.
+          example: 2
+        priority:
+          type: integer
+          nullable: true
+          description: Sort priority for display ordering.
+          example: 173
+        isActive:
+          type: boolean
+          description: Whether the component is currently available for use.
+          example: true
+        createdById:
+          type: integer
+          description: ID of the admin user who created this component.
+          example: 15
+        createdBy:
+          $ref: "#/components/schemas/CreatedByUser"
+        numAction:
+          type: integer
+          description: Number of actions/operations this component supports.
+          example: 0
+        isExpand:
+          type: boolean
+          nullable: true
+          description: Whether the component is expanded in the UI by default.
+        pipedreamData:
+          type: object
+          nullable: true
+          description: Additional Pipedream-specific configuration data.
+        categories:
+          type: array
+          description: Categories this component belongs to.
+          items:
+            $ref: "#/components/schemas/ComponentCategory"
+        createdAt:
+          type: string
+          format: date-time
+          description: When this component was created.
+          example: "2025-04-09T14:50:12.252721Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: When this component was last updated.
+          example: "2025-11-26T04:38:52.425420Z"
+
+    ComponentCategory:
+      type: object
+      description: A category grouping for components.
+      properties:
+        id:
+          type: integer
+          description: Category ID.
+          example: 122
+        name:
+          type: string
+          description: Category display name.
+          example: "Public AI/LLM Models"
+        icon:
+          type: string
+          nullable: true
+          description: Path or URL to the category icon.
+          example: "public/production/admin/component-categories/icon/key-regular.svg"
+        description:
+          type: string
+          nullable: true
+          description: Category description.
+        note:
+          type: string
+          nullable: true
+          description: Additional notes about the category.
+        status:
+          type: string
+          nullable: true
+          description: Category status.
+        priority:
+          type: integer
+          description: Sort priority for display ordering.
+          example: 7
+        isActive:
+          type: boolean
+          description: Whether the category is active.
+          example: true
+        numComponent:
+          type: integer
+          description: Number of components in this category.
+          example: 12
+        isExpand:
+          type: boolean
+          description: Whether the category is expanded by default in the UI.
+          example: false
+        createdById:
+          type: integer
+          description: ID of the admin who created this category.
+        createdBy:
+          $ref: "#/components/schemas/CreatedByUser"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ModelConfig:
+      type: object
+      description: Configuration for an AI model within a provider.
+      properties:
+        name:
+          type: string
+          description: Human-readable model name (may be absent for some providers like OpenAI).
+          example: "Claude 4 Sonnet"
+        model:
+          type: string
+          description: Model identifier used in API calls.
+          example: "claude-4-sonnet-20250514"
+        is_active:
+          type: boolean
+          description: Whether this model is currently available.
+          example: true
+        is_memory:
+          type: boolean
+          description: Whether this model supports conversation memory/context.
+          example: true
+        max_token:
+          type: integer
+          description: Maximum token limit for this model.
+          example: 120000
+        model_type:
+          type: string
+          description: Type of model (e.g. "chat", "multimodal", "gpt-5", "image").
+          example: "chat"
+        description:
+          type: string
+          description: Brief description of the model's capabilities.
+          example: "Smaller, faster variant offering excellent balance between speed and capability."
+        file_formats:
+          type: array
+          description: Supported file formats for upload.
+          items:
+            type: string
+          example: [".jpg,.jpeg", ".png", ".webp", ".docx", ".txt", ".pdf", ".srt"]
+        params:
+          type: object
+          description: Additional model parameters (e.g. speed/intelligence ratings).
+          properties:
+            speed:
+              type: integer
+              description: Speed rating (1-5).
+              example: 4
+            intelligence:
+              type: integer
+              description: Intelligence/capability rating (1-5).
+              example: 4
+
+    ComponentPricing:
+      type: object
+      description: Pricing information for a single component.
+      properties:
+        node_id:
+          type: string
+          description: Component node identifier.
+          example: "gemini"
+        prices:
+          type: object
+          description: Pricing tiers keyed by model name.
+          additionalProperties:
+            type: array
+            items:
+              $ref: "#/components/schemas/PriceEntry"
+
+    PriceEntry:
+      type: object
+      description: A single pricing entry for a component model variant.
+      properties:
+        id:
+          type: integer
+          description: Price entry ID.
+          example: 67
+        node_id:
+          type: string
+          description: Component node identifier.
+          example: "gemini"
+        unit:
+          type: string
+          description: Billing unit (e.g. "token", "request", "second", "image").
+          example: "token"
+        model:
+          type: string
+          description: Model identifier this price applies to.
+          example: "gemini-2.5-flash"
+        input_cost:
+          type: number
+          format: double
+          description: Cost per unit for input.
+          example: 0.0001
+        output_cost:
+          type: number
+          format: double
+          description: Cost per unit for output.
+          example: 0.0002
+        variant:
+          type: string
+          nullable: true
+          description: Price variant qualifier (e.g. ">128k token").
+        is_active:
+          type: boolean
+          description: Whether this pricing tier is currently active.
+          example: true
+        priority:
+          type: integer
+          nullable: true
+          description: Display priority ordering.
+          example: 8
+        created_at:
+          type: string
+          format: date-time
+          description: When this price entry was created.
+        updated_at:
+          type: string
+          format: date-time
+          description: When this price entry was last updated.
+        deleted_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: When this price entry was soft-deleted, or null if active.
+
+    TemplateCategory:
+      type: object
+      description: A category used to organize community flow templates.
+      properties:
+        id:
+          type: integer
+          description: Unique category ID.
+          example: 61
+        name:
+          type: string
+          description: Display name of the category.
+          example: "Chat / QnA"
+        icon:
+          type: string
+          description: Relative path to the category icon image.
+          example: "public/production/admin/template-categories/icon/chat-qna-icon.png"
+        description:
+          type: string
+          nullable: true
+          description: Optional description of the category.
+          example: "Here are templates for creating use cases about customer supports, FAQs feedback, Q&A, etc."
+        background:
+          type: string
+          nullable: true
+          description: Relative path to the category background image.
+          example: "template-categories/frame-2610097jpg__EYmalZfgCm.webp"
+        isActive:
+          type: boolean
+          description: Whether the category is currently active/visible.
+          example: true
+        slug:
+          type: string
+          nullable: true
+          description: URL-friendly slug for the category.
+        priority:
+          type: integer
+          description: Sort priority (lower values appear first).
+          example: 0
+        createdAt:
+          type: string
+          format: date-time
+          description: Creation timestamp.
+          example: "2023-12-20T06:54:31.383264Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last update timestamp.
+          example: "2026-02-08T10:01:48.978469Z"
+
+    Template:
+      type: object
+      description: A publicly shared community flow template.
+      properties:
+        id:
+          type: integer
+          description: Unique template ID.
+          example: 846
+        title:
+          type: string
+          description: Display title of the template.
+          example: "Market Trend & Video Competition Analysis"
+        color:
+          type: string
+          nullable: true
+          description: Optional color for the template card.
+        description:
+          type: string
+          nullable: true
+          description: Template description.
+        plan:
+          type: string
+          description: Minimum plan required to use this template.
+          enum: [BASIC, PRO, ENTERPRISE]
+          example: "BASIC"
+        data:
+          type: object
+          description: Flow graph data containing nodes and connectors.
+          properties:
+            nodes:
+              type: array
+              description: Flow nodes in the template.
+              items:
+                $ref: "#/components/schemas/FlowNode"
+            connectors:
+              type: array
+              description: Edges connecting nodes.
+              items:
+                $ref: "#/components/schemas/Connector"
+        enableAccess:
+          type: boolean
+          nullable: true
+          description: Whether public access is enabled for the template.
+        categories:
+          type: array
+          description: Categories this template belongs to.
+          items:
+            $ref: "#/components/schemas/TemplateCategory"
+        isDraft:
+          type: boolean
+          description: Whether the template is in draft state.
+          example: false
+        used:
+          type: integer
+          description: Number of times this template has been used/cloned.
+          example: 2
+        icon:
+          type: string
+          nullable: true
+          description: Optional icon for the template.
+        keyFeatures:
+          type: string
+          nullable: true
+          description: HTML-formatted key features description.
+        createdAt:
+          type: string
+          format: date-time
+          description: Creation timestamp.
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last update timestamp.
+
+    CommunityProfile:
+      type: object
+      description: |
+        A user's community profile. Contains public-facing information
+        for the template marketplace. Returns 404 if the user has not
+        created a community profile yet.
+      properties:
+        id:
+          type: integer
+          description: Unique community profile ID.
+          example: 1234
+        username:
+          type: string
+          description: Public display username.
+          example: "john_doe"
+        avatar:
+          type: string
+          nullable: true
+          description: URL to the user's avatar image.
+          example: "public/production/workspace_None/users/avatar.jpg"
+        bio:
+          type: string
+          nullable: true
+          description: User's biography/about text.
+          example: "AI workflow enthusiast"
+        followersCount:
+          type: integer
+          description: Number of followers.
+          example: 42
+        followingCount:
+          type: integer
+          description: Number of users being followed.
+          example: 15
+        templatesCount:
+          type: integer
+          description: Number of published templates.
+          example: 3
+        createdAt:
+          type: string
+          format: date-time
+          description: Profile creation timestamp.
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last update timestamp.
+
+    Badge:
+      type: object
+      description: |
+        An announcement or badge banner object. Used to display news,
+        updates, or achievement badges in the UI. Contains a title,
+        category, content text, and an optional redirect URL.
+      properties:
+        id:
+          type: integer
+          description: Unique badge/announcement ID.
+          example: 5
+        title:
+          type: string
+          description: Announcement title.
+          example: "News"
+        category:
+          type: string
+          description: Category of the announcement.
+          example: "News"
+        content:
+          type: string
+          description: Announcement content text.
+          example: "Diaflow is now SOC 2 Type 2 Certified"
+        redirectUrl:
+          type: string
+          nullable: true
+          description: URL to redirect to when the announcement is clicked.
+          example: "https://www.diaflow.io/blog/diaflow-achieves-soc2-type2-certification"
+        isActive:
+          type: boolean
+          description: Whether the announcement is currently active.
+          example: true
+        createdBy:
+          $ref: "#/components/schemas/CreatedByUser"
+        createdAt:
+          type: string
+          format: date-time
+          description: Creation timestamp.
+          example: "2026-03-17T04:40:20.485874Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last update timestamp.
+          example: "2026-03-17T04:40:20.485879Z"
+
+    ChatPresetStyle:
+      type: object
+      description: |
+        A preset writing style for chat interfaces. Contains a system prompt
+        that configures the LLM's tone, format, and language behavior.
+      properties:
+        id:
+          type: integer
+          description: Unique preset style ID.
+          example: 1
+        name:
+          type: string
+          description: Display name of the style.
+          example: "Normal"
+        prompt:
+          type: string
+          description: System prompt text that defines the writing style behavior.
+          example: "Adopt a confident, approachable voice that balances expertise with accessibility..."
+        priority:
+          type: integer
+          description: Display sort priority.
+          example: 0
+        isActive:
+          type: boolean
+          description: Whether the style is currently active.
+          example: true
+        isDefault:
+          type: boolean
+          description: Whether this is the user's selected default style.
+          example: true
+        isAdminDefault:
+          type: boolean
+          description: Whether this is the system-wide admin default style.
+          example: true
+        isAdminPreset:
+          type: boolean
+          description: Whether this style was created by an admin (vs. user-created).
+          example: true
+        isOwner:
+          type: boolean
+          description: Whether the authenticated user owns this style.
+          example: false
+        createdById:
+          type: integer
+          nullable: true
+          description: ID of the user who created this style (null for admin presets).
+        workspaceId:
+          type: integer
+          description: Workspace this style belongs to.
+          example: 13
+        createdAt:
+          type: string
+          format: date-time
+          description: Creation timestamp.
+          example: "2025-12-30T13:59:56.084053Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last update timestamp.
+          example: "2025-12-30T14:29:40.117303Z"
+
+    AgentChatWindow:
+      type: object
+      description: |
+        An agent chat window configuration. Represents an embeddable or
+        standalone chat agent instance linked to a builder flow.
+      properties:
+        id:
+          type: integer
+          description: Unique chat window ID.
+          example: 1
+        builderId:
+          type: string
+          description: Builder/flow unique ID this chat window is linked to.
+          example: "pEBHQNskat"
+        config:
+          type: object
+          description: Chat window appearance and behavior configuration.
+        createdAt:
+          type: string
+          format: date-time
+          description: Creation timestamp.
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last update timestamp.
+
+    SamplePromptCategory:
+      type: object
+      description: |
+        A category for sample prompts shown on the dashboard.
+        Categories are typed as "shortcut" (text-based prompts) or
+        "tools" (linked to specific node types like image/video generation).
+      properties:
+        id:
+          type: integer
+          description: Unique category ID.
+          example: 2
+        title:
+          type: string
+          description: Display title of the category.
+          example: "Write"
+        icon:
+          type: string
+          description: Relative path to the category icon.
+          example: "public/production/admin/sample-prompt-categories/icon/feather-pointed.svg"
+        type:
+          type: string
+          description: Category type - "shortcut" for text prompts, "tools" for node-linked tools.
+          enum: [shortcut, tools]
+          example: "shortcut"
+        nodeId:
+          type: string
+          nullable: true
+          description: Node type ID for tool-type categories (e.g. "byteplus-image", "video-generation").
+          example: "byteplus-image"
+        description:
+          type: string
+          nullable: true
+          description: Optional description of the category.
+          example: "Image generation"
+        status:
+          type: boolean
+          description: Whether the category is enabled/visible.
+          example: true
+        priority:
+          type: integer
+          description: Sort priority (lower values appear first).
+          example: 0
+        createdAt:
+          type: string
+          format: date-time
+          description: Creation timestamp.
+          example: "2025-12-30T14:52:50.423366Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last update timestamp.
+          example: "2026-02-11T13:54:08.104338Z"
+
+    PromptSample:
+      type: object
+      description: |
+        A sample LLM prompt template. Contains structured prompt text with
+        role, objective, processing instructions, and output format.
+        Supports multilingual name/prompt/description values.
+      properties:
+        id:
+          type: integer
+          description: Unique prompt sample ID.
+          example: 2
+        name:
+          type: string
+          description: Display name of the prompt sample.
+          example: "Content — SEO Brief & Article Draft"
+        prompt:
+          type: string
+          description: Full prompt text with structured sections (Role, Objective, Instructions, Output Format, etc.).
+          example: "# Content — SEO Brief & Article Draft\n\n## Role & Context\nYou are an SEO Content Strategist..."
+        description:
+          type: string
+          nullable: true
+          description: Optional description of the prompt sample.
+        llmNode:
+          type: string
+          description: Target LLM node type for this prompt.
+          example: "openai"
+        promptType:
+          type: string
+          description: Type of prompt sample.
+          enum: [template, custom]
+          example: "template"
+        status:
+          type: boolean
+          description: Whether the prompt sample is active.
+          example: true
+        thumbnail:
+          type: string
+          nullable: true
+          description: Optional thumbnail image path.
+        sampleAttachments:
+          type: array
+          nullable: true
+          description: Optional file attachments for the sample.
+          items:
+            type: object
+        nameValues:
+          type: array
+          description: Multilingual name values.
+          items:
+            type: object
+            properties:
+              value:
+                type: string
+                description: Localized name text.
+              lang_code:
+                type: string
+                description: Language code (e.g. "en", "vi").
+                example: "en"
+              is_primary:
+                type: boolean
+                description: Whether this is the primary language.
+                example: true
+        promptValues:
+          type: array
+          description: Multilingual prompt values.
+          items:
+            type: object
+            properties:
+              value:
+                type: string
+                description: Localized prompt text.
+              lang_code:
+                type: string
+                description: Language code.
+                example: "en"
+              is_primary:
+                type: boolean
+                example: true
+        descriptionValues:
+          type: array
+          nullable: true
+          description: Multilingual description values.
+          items:
+            type: object
+            properties:
+              value:
+                type: string
+              lang_code:
+                type: string
+              is_primary:
+                type: boolean
+        createdById:
+          type: integer
+          description: ID of the user who created this sample.
+          example: 15
+        createdAt:
+          type: string
+          format: date-time
+          description: Creation timestamp.
+          example: "2025-10-13T09:00:36.796332Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last update timestamp.
+
+    Document:
+      type: object
+      description: A page/document in the workspace with optional AI writing configuration.
+      properties:
+        id:
+          type: integer
+          description: Numeric document ID.
+          example: 3226
+        uniqueId:
+          type: string
+          description: Alphanumeric unique identifier.
+          example: "doc-9305306201"
+        title:
+          type: string
+          description: Document title.
+          example: "Project Brief"
+        description:
+          type: string
+          nullable: true
+          description: Optional short description.
+        data:
+          type: string
+          nullable: true
+          description: Document content in markdown or plain text.
+        language:
+          type: string
+          nullable: true
+          description: Content language setting (e.g. "auto-detect").
+        writingStyle:
+          type: string
+          nullable: true
+          description: AI writing style preset.
+          enum: [Expert, Balanced, Creative]
+        personalPrompt:
+          type: string
+          nullable: true
+          description: Custom AI prompt for the document.
+        displayMode:
+          type: string
+          nullable: true
+          description: Document display mode in the UI.
+        writingLength:
+          type: string
+          nullable: true
+          description: AI writing length preset.
+          enum: [Auto, Short, Long]
+        writingLengthNumber:
+          type: integer
+          nullable: true
+          description: Custom writing length in tokens.
+        vectorSource:
+          type: string
+          nullable: true
+          description: Knowledge source mode for AI features.
+          example: "notUsingKnowledgeSource"
+        vectorFileIds:
+          type: array
+          nullable: true
+          description: Specific vector file IDs to use as knowledge source.
+          items:
+            type: integer
+        vectorGroupIds:
+          type: array
+          nullable: true
+          description: Vector group IDs to use as knowledge source.
+          items:
+            type: integer
+        llmModel:
+          type: string
+          nullable: true
+          description: LLM model used for AI features.
+          example: "gpt-5-mini"
+        llmProvider:
+          type: string
+          nullable: true
+          description: LLM provider name.
+          example: "Open AI"
+        llmCustomConfig:
+          type: object
+          nullable: true
+          description: Custom LLM parameters for this document.
+          properties:
+            top_p:
+              type: number
+              example: 0.9
+            max_length:
+              type: integer
+              example: 4000
+            temperature:
+              type: number
+              example: 0.65
+            presence_penalty:
+              type: number
+              example: 0.1
+            frequency_penalty:
+              type: number
+              example: 0.5
+        workspaceId:
+          type: integer
+          description: Workspace this document belongs to.
+          example: 256
+        creatorId:
+          type: integer
+          description: User ID of the document creator.
+          example: 100
+        ownerId:
+          type: integer
+          description: User ID of the document owner.
+          example: 100
+        lastEditorId:
+          type: integer
+          description: User ID of the last editor.
+          example: 100
+        isDraft:
+          type: boolean
+          description: Whether the document is a draft.
+          example: false
+        creator:
+          $ref: "#/components/schemas/DocumentUser"
+        lastEditor:
+          $ref: "#/components/schemas/DocumentUser"
+        owner:
+          $ref: "#/components/schemas/DocumentUser"
+        sessionId:
+          type: string
+          nullable: true
+          description: Active editing session ID.
+        deletedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Soft deletion timestamp.
+        usage:
+          type: array
+          description: Usage/credit consumption records for AI operations.
+          items:
+            type: object
+        createdAt:
+          type: string
+          format: date-time
+          description: Creation timestamp.
+          example: "2026-02-26T10:22:01.161286Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last update timestamp.
+          example: "2026-02-26T10:24:38.122122Z"
+
+    DocumentUser:
+      type: object
+      description: Abbreviated user profile embedded in document responses.
+      properties:
+        id:
+          type: integer
+          description: User ID.
+          example: 100
+        email:
+          type: string
+          description: User email address.
+          example: "user@example.com"
+        credit:
+          type: number
+          nullable: true
+          description: User credit balance.
+        fullName:
+          type: string
+          description: Full display name.
+          example: "Jane Doe"
+        avatar:
+          type: string
+          nullable: true
+          description: Avatar URL.
+          example: "https://example.com/avatar.jpg"
+        color:
+          type: string
+          nullable: true
+          description: User color hex code for UI display.
+          example: "#9c899e"
+        isProfileVerified:
+          type: boolean
+          nullable: true
+          description: Whether the user profile is verified.
+
+    TableSchema:
+      type: object
+      description: >-
+        Database table schema returned by the workspace-databases endpoint.
+        Contains the table name and an array of column definitions.
+      properties:
+        table_name:
+          type: string
+          description: Name of the database table.
+          example: "Transaction"
+        columns:
+          type: array
+          description: Column definitions for the table.
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+                description: Column name.
+                example: "amount"
+              data_type:
+                type: string
+                description: PostgreSQL data type of the column.
+                example: "character varying"
+
+    Table:
+      type: object
+      description: >-
+        Database table metadata returned by the workspace-db-tables endpoint.
+        Includes row/column counts and an optional embedded schema.
+      properties:
+        id:
+          type: integer
+          description: Numeric table ID.
+          example: 1654
+        workspaceId:
+          type: integer
+          description: Workspace this table belongs to.
+          example: 256
+        tableName:
+          type: string
+          description: Name of the database table.
+          example: "Transaction"
+        columnCount:
+          type: integer
+          description: Number of columns in the table.
+          example: 15
+        rowCount:
+          type: integer
+          description: Number of rows in the table.
+          example: 8
+        data:
+          type: object
+          nullable: true
+          description: Optional embedded data including schema definition.
+          properties:
+            schema:
+              type: array
+              description: Column schema definitions with type and nullability info.
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                    description: Column name.
+                    example: "amount"
+                  type:
+                    type: string
+                    description: PostgreSQL data type.
+                    example: "real"
+                  default:
+                    type: string
+                    nullable: true
+                    description: Default value expression.
+                  is_nullable:
+                    type: string
+                    description: Whether the column allows NULL values.
+                    enum: ["YES", "NO"]
+        createdById:
+          type: integer
+          nullable: true
+          description: User ID of the table creator.
+        isActive:
+          type: boolean
+          description: Whether the table is active.
+          example: true
+        createdAt:
+          type: string
+          format: date-time
+          description: Creation timestamp.
+          example: "2026-01-05T11:08:59.950711Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last update timestamp.
+          example: "2026-02-23T06:49:23.626346Z"
+
+    DriveFile:
+      type: object
+      description: A file or folder entry in the workspace S3 drive storage.
+      properties:
+        id:
+          type: integer
+          description: Numeric file/folder ID.
+          example: 32397
+        fileName:
+          type: string
+          description: File or folder name.
+          example: "report.csv"
+        fileExtension:
+          type: string
+          nullable: true
+          description: File extension (null for folders).
+          example: "csv"
+        fileSize:
+          type: integer
+          nullable: true
+          description: File size in bytes (null for folders).
+          example: 1128
+        mimeType:
+          type: string
+          nullable: true
+          description: MIME type of the file (null for folders).
+          example: "text/csv"
+        parentFolder:
+          type: string
+          nullable: true
+          description: Parent folder path (null for root-level items).
+        isFolder:
+          type: boolean
+          description: Whether this entry is a folder.
+          example: false
+        s3Key:
+          type: string
+          description: Full S3 object key path.
+          example: "production/workspace_256/report.csv"
+        workspaceId:
+          type: integer
+          description: Workspace this file belongs to.
+          example: 256
+        uploadedBy:
+          type: integer
+          nullable: true
+          description: User ID who uploaded the file.
+        isDeleted:
+          type: boolean
+          description: Whether the file is soft-deleted.
+          example: false
+        deletedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Soft deletion timestamp.
+        createdAt:
+          type: string
+          format: date-time
+          description: Creation timestamp.
+          example: "2025-07-21T11:27:48Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last update timestamp.
+          example: "2025-07-21T11:27:48Z"
+
+    VectorGroupSummary:
+      type: object
+      description: Summary of a vector group (knowledge base) returned in list endpoints.
+      properties:
+        id:
+          type: integer
+          description: Numeric vector group ID.
+          example: 1528
+        title:
+          type: string
+          description: Display title of the vector group.
+          example: "Product Documentation"
+        description:
+          type: string
+          nullable: true
+          description: Optional description of the group.
+        workspaceId:
+          type: integer
+          description: Workspace this group belongs to.
+          example: 256
+        used:
+          type: integer
+          description: Number of times this group has been used/referenced.
+          example: 0
+        numVector:
+          type: integer
+          description: Number of vectors (items) in this group.
+          example: 5
+        createdAt:
+          type: string
+          format: date-time
+          description: Creation timestamp.
+          example: "2026-02-10T03:43:00.469548Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last update timestamp.
+          example: "2026-02-10T03:43:00.469553Z"
+
+    VectorGroup:
+      type: object
+      description: Detailed vector group object returned by the single-group endpoint.
+      properties:
+        id:
+          type: integer
+          description: Numeric vector group ID.
+          example: 1528
+        title:
+          type: string
+          description: Display title of the vector group.
+          example: "Product Documentation"
+        description:
+          type: string
+          nullable: true
+          description: Optional description of the group.
+        workspaceId:
+          type: integer
+          description: Workspace this group belongs to.
+          example: 256
+        used:
+          type: integer
+          description: Number of times this group has been used/referenced.
+          example: 0
+        numVector:
+          type: integer
+          description: Number of vectors in this group.
+          example: 5
+        createdAt:
+          type: string
+          format: date-time
+          description: Creation timestamp.
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last update timestamp.
+
+    Vector:
+      type: object
+      description: >-
+        A vector (knowledge base item) which can be a Document (file upload),
+        Article (text content), or Website (URL crawl).
+      properties:
+        id:
+          type: integer
+          description: Numeric vector ID.
+          example: 174747
+        title:
+          type: string
+          nullable: true
+          description: Optional display title.
+        name:
+          type: string
+          description: Name of the vector item (filename, article name, or URL).
+          example: "product-guide.docx"
+        type:
+          type: string
+          description: Source type of the vector.
+          enum: [Document, Article, Website]
+          example: "Document"
+        content:
+          type: string
+          nullable: true
+          description: Inline text content (for Article type).
+        url:
+          type: string
+          nullable: true
+          description: Source URL (for Website type).
+          example: "https://example.com/"
+        file:
+          type: string
+          nullable: true
+          description: S3 file path (for Document type).
+          example: "production/workspace_256/vectors/product-guide.docx"
+        fileName:
+          type: string
+          nullable: true
+          description: Original file name (for Document type).
+          example: "product-guide.docx"
+        fileType:
+          type: string
+          nullable: true
+          description: File extension (for Document type).
+          example: "docx"
+        status:
+          type: string
+          description: Processing status of the vector.
+          enum: [Pending, Processing, Completed, Failed]
+          example: "Completed"
+        workspaceId:
+          type: integer
+          description: Workspace this vector belongs to.
+          example: 256
+        groups:
+          type: array
+          description: Vector groups this item belongs to.
+          items:
+            $ref: "#/components/schemas/VectorGroupSummary"
+        log:
+          type: string
+          nullable: true
+          description: Processing log message with chunk/section counts.
+          example: "Retrieval Handler completed: 35 chunks, 77 sections"
+        config:
+          type: object
+          nullable: true
+          description: Optional processing configuration.
+        size:
+          type: string
+          description: Human-readable file size.
+          example: "21.8 KB"
+        createdAt:
+          type: string
+          format: date-time
+          description: Creation timestamp.
+          example: "2026-02-11T03:27:33.109897Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last update timestamp.
+          example: "2026-02-11T03:28:18.985060Z"
+
+    VectorSearchResult:
+      type: object
+      description: A single result from a vector similarity search.
+      properties:
+        id:
+          type: string
+          description: Vector chunk ID.
+        content:
+          type: string
+          description: Matched text content.
+        score:
+          type: number
+          format: float
+          description: Similarity score (higher is more relevant).
+        metadata:
+          type: object
+          description: Additional metadata about the matched chunk.
+
+    MemberUser:
+      type: object
+      nullable: true
+      description: >-
+        User profile details. Null when the member is a pending invitation
+        and the invitee has not yet registered.
+      properties:
+        id:
+          type: integer
+          description: User ID.
+          example: 1234
+        email:
+          type: string
+          format: email
+          description: User email address.
+          example: "user@example.com"
+        fullName:
+          type: string
+          description: Display name.
+          example: "John Doe"
+        avatar:
+          type: string
+          nullable: true
+          description: URL or path to avatar image.
+          example: "https://example.com/avatar.jpg"
+        color:
+          type: string
+          description: Hex color assigned to the user for UI display.
+          example: "#3d58ca"
+        credit:
+          type: number
+          nullable: true
+          description: User credit balance (usually null at member level).
+        isProfileVerified:
+          type: boolean
+          nullable: true
+          description: Whether the user profile is verified.
+
+    Member:
+      type: object
+      description: A workspace membership record, including the user profile and workspace summary.
+      properties:
+        id:
+          type: integer
+          description: Membership record ID.
+          example: 9788
+        workspaceId:
+          type: integer
+          description: ID of the workspace.
+          example: 256
+        userId:
+          type: integer
+          nullable: true
+          description: User ID. Null for pending invitations where the user has not registered.
+          example: 1234
+        email:
+          type: string
+          format: email
+          description: Email address of the member or invitee.
+          example: "user@example.com"
+        role:
+          type: string
+          description: Role within the workspace.
+          enum: [Owner, Administrator, Member]
+          example: "Administrator"
+        status:
+          type: string
+          description: Membership status.
+          enum: [accept, pending]
+          example: "accept"
+        isActive:
+          type: boolean
+          description: Whether the membership is active.
+          example: true
+        lastLogin:
+          type: string
+          format: date-time
+          nullable: true
+          description: Timestamp of the member's last login to this workspace.
+          example: "2025-11-18T12:52:28.486957Z"
+        builders:
+          type: array
+          nullable: true
+          description: Builders assigned to this member (usually null in list response).
+          items:
+            type: object
+        user:
+          $ref: "#/components/schemas/MemberUser"
+        createdAt:
+          type: string
+          format: date-time
+          description: When the membership was created.
+          example: "2025-11-18T12:52:28.486957Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: When the membership was last updated.
+          example: "2025-11-18T12:52:28.486962Z"
+
+    ApiKeySummary:
+      type: object
+      description: API key summary returned when listing keys. Includes the full key value and usage stats.
+      properties:
+        id:
+          type: integer
+          description: Numeric API key ID.
+          example: 1831
+        name:
+          type: string
+          description: Human-readable name for the API key.
+          example: "My_API_Key"
+        key:
+          type: string
+          description: >-
+            Full API key value. Format is sk-<hex>. Returned in list responses
+            (unlike some APIs that mask the key after creation).
+          example: "sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        numUsed:
+          type: integer
+          description: Number of times this key has been used.
+          example: 15
+        lastUsed:
+          type: string
+          format: date-time
+          nullable: true
+          description: Timestamp of the last usage, or null if never used.
+          example: "2025-07-21T12:12:02.430586Z"
+        userId:
+          type: integer
+          description: ID of the user who created this key.
+          example: 276
+        workspaceId:
+          type: integer
+          description: Workspace this key belongs to.
+          example: 256
+        createdAt:
+          type: string
+          format: date-time
+          description: When the key was created.
+          example: "2025-07-21T11:41:01.106000Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: When the key was last updated.
+          example: "2025-07-21T12:12:02.431183Z"
+
+    ApiKey:
+      type: object
+      description: Full API key object returned on creation. Same structure as ApiKeySummary.
+      properties:
+        id:
+          type: integer
+          description: Numeric API key ID.
+          example: 1831
+        name:
+          type: string
+          description: Human-readable name for the API key.
+          example: "My_API_Key"
+        key:
+          type: string
+          description: Full API key value (shown on creation).
+          example: "sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        numUsed:
+          type: integer
+          description: Number of times this key has been used (0 on creation).
+          example: 0
+        lastUsed:
+          type: string
+          format: date-time
+          nullable: true
+          description: Timestamp of last usage (null on creation).
+        userId:
+          type: integer
+          description: ID of the user who created this key.
+          example: 276
+        workspaceId:
+          type: integer
+          description: Workspace this key belongs to.
+          example: 256
+        createdAt:
+          type: string
+          format: date-time
+          description: When the key was created.
+        updatedAt:
+          type: string
+          format: date-time
+          description: When the key was last updated.
+
+    Integration:
+      type: object
+      description: >-
+        A third-party integration or credential configured for the workspace.
+        Note: The GET list endpoint returned 404 during testing, so this schema
+        is based on the POST creation endpoint and may need refinement once
+        the list endpoint becomes available.
+      properties:
+        id:
+          type: string
+          description: Integration ID.
+          example: "int_abc123"
+        type:
+          type: string
+          description: Integration provider type (e.g. slack, google_sheets, openai).
+          example: "slack"
+        name:
+          type: string
+          description: Display name for this integration.
+          example: "My Slack Integration"
+        config:
+          type: object
+          description: Provider-specific configuration (credentials, tokens, etc.).
+        status:
+          type: string
+          description: Current status of the integration.
+          enum: [active, inactive, error]
+          example: "active"
+
+    Product:
+      type: object
+      description: |
+        A subscription product/plan. Contains pricing, credit allocations,
+        resource limits, and feature flags for a specific plan tier.
+      properties:
+        id:
+          type: integer
+          description: Unique product ID.
+          example: 72
+        name:
+          type: string
+          description: Display name of the product/plan.
+          example: "Pro Trial"
+        internalId:
+          type: string
+          description: Internal identifier for the product.
+          example: "free-trial"
+        billingTag:
+          type: string
+          nullable: true
+          description: Billing system tag/reference.
+        productType:
+          type: string
+          description: Type of product billing cycle.
+          enum: [lifetime, monthly, yearly]
+          example: "lifetime"
+        description:
+          type: string
+          nullable: true
+          description: Product description.
+        isActive:
+          type: boolean
+          description: Whether the product is currently available.
+          example: true
+        price:
+          type: number
+          format: float
+          description: Price of the product.
+          example: 0.0
+        fixedCredit:
+          type: integer
+          description: One-time credit allocation when purchasing.
+          example: 10000
+        monthlyRenewed:
+          type: integer
+          description: Credits renewed monthly.
+          example: 10000
+        creditsGranted:
+          type: integer
+          nullable: true
+          description: Total credits granted (if applicable).
+        differencePercent:
+          type: number
+          nullable: true
+          description: Discount percentage compared to base price.
+        priority:
+          type: integer
+          description: Display priority/sort order.
+          example: 4
+        label:
+          type: string
+          nullable: true
+          description: Optional label (e.g. "Popular", "Best Value").
+        totalFlowsAmount:
+          type: integer
+          nullable: true
+          description: Maximum number of flows allowed.
+        totalTablesAmount:
+          type: integer
+          nullable: true
+          description: Maximum number of tables allowed.
+        totalRowsAmount:
+          type: integer
+          nullable: true
+          description: Maximum number of table rows allowed.
+        totalPagesAmount:
+          type: integer
+          nullable: true
+          description: Maximum number of pages/documents allowed.
+        totalUsersAmount:
+          type: integer
+          nullable: true
+          description: Maximum number of workspace users allowed.
+        totalVectorAmount:
+          type: integer
+          nullable: true
+          description: Maximum number of vector groups allowed.
+        totalStorageAmount:
+          type: integer
+          nullable: true
+          description: Maximum storage in bytes.
+        featureRemoveLogo:
+          type: boolean
+          description: Whether the plan allows removing Diaflow branding.
+          example: true
+        featureCustomDomain:
+          type: boolean
+          description: Whether the plan allows custom domains.
+          example: true
+        items:
+          type: array
+          nullable: true
+          description: Sub-items or add-ons included in this product.
+          items:
+            type: object
+        createdBy:
+          $ref: "#/components/schemas/CreatedByUser"
+        createdById:
+          type: integer
+          description: ID of the user who created this product.
+          example: 15
+        createdAt:
+          type: string
+          format: date-time
+          description: Creation timestamp.
+          example: "2025-02-12T03:32:33.808388Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last update timestamp.
+          example: "2025-12-19T07:52:57.067011Z"
