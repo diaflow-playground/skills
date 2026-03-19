@@ -29,31 +29,44 @@ git clone https://github.com/diaflow-playground/skills.git
 claude plugin install ./diaflow-skill
 ```
 
-### Option 3: Browse and install via Claude Code
+### Option 3: Add as a custom marketplace
+
+Add this repo as a marketplace so the plugin appears in `/plugin > Discover` and auto-updates:
+
+**Via Claude Code CLI:**
+
+```bash
+claude plugin marketplace add https://github.com/diaflow-playground/skills.git
+```
+
+**Via Claude Desktop:**
+
+1. Open Settings > Plugins > Manage Marketplaces
+2. Click "Add Marketplace"
+3. Enter the URL: `https://github.com/diaflow-playground/skills.git`
+
+**Manually (if the above fails):**
+
+Add this entry to `~/.claude/plugins/known_marketplaces.json`:
+
+```json
+"diaflow-skill": {
+  "source": {
+    "source": "git",
+    "url": "https://github.com/diaflow-playground/skills.git"
+  },
+  "installLocation": "/Users/YOUR_USERNAME/.claude/plugins/marketplaces/diaflow-skill",
+  "autoUpdate": true
+}
+```
+
+Then restart Claude Code. The plugin will appear in `/plugin > Discover`.
+
+### Option 4: Browse and install via Claude Code
 
 1. Open Claude Code
 2. Type `/plugin` and select **Discover**
 3. Search for `diaflow-skill` and install
-
-### Option 4: Add as a custom marketplace
-
-If you want this plugin to appear in your `/plugin > Discover` list alongside other marketplaces, add it to your known marketplaces:
-
-1. Open `~/.claude/plugins/known_marketplaces.json`
-2. Add the following entry:
-   ```json
-   {
-     "diaflow-skill": {
-       "source": {
-         "source": "git",
-         "url": "https://github.com/diaflow-playground/skills.git"
-       },
-       "installLocation": "~/.claude/plugins/marketplaces/diaflow-skill",
-       "autoUpdate": true
-     }
-   }
-   ```
-3. Restart Claude Code — the plugin will now appear in `/plugin > Discover` and auto-update when you pull new versions
 
 ### Install scope
 

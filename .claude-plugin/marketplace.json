@@ -1,0 +1,17 @@
+{
+  "name": "diaflow-skill",
+  "description": "Diaflow Skills Marketplace - Autonomous workflow builder for the Diaflow GenAI platform",
+  "owner": {
+    "name": "thuantan2060",
+    "email": "thuantan2060@gmail.com"
+  },
+  "plugins": [
+    {
+      "name": "diaflow-skill",
+      "description": "Autonomous Diaflow workflow builder agent. Create, update, validate, debug, and deploy Diaflow workflows, chatbots, apps, and automations through a structured conversational process.",
+      "category": "development",
+      "source": "./",
+      "homepage": "https://github.com/diaflow-playground/skills"
+    }
+  ]
+}
