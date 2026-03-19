@@ -162,10 +162,12 @@ def main():
 
         last_status = check.get("status", "Unknown")
 
-        # Track newly completed nodes
+        # Track newly completed nodes (skip sticky notes — they always error)
         nodes = check.get("node", [])
         for node_entry in nodes:
             for node_id, node_data in node_entry.items():
+                if node_id.startswith("stn-"):
+                    continue
                 if node_id not in completed_nodes and node_data.get("status") == "Done":
                     completed_nodes.add(node_id)
                     log(f"  Node completed: {node_id} ({node_data.get('time', '?')}s)")
@@ -202,10 +204,13 @@ def main():
         "result_summary": {}
     }
 
-    # Parse node results
+    # Parse node results (skip sticky notes — they always error and are not functional)
     if "node" in check:
         for node_entry in check["node"]:
             for node_id, node_data in node_entry.items():
+                if node_id.startswith("stn-"):
+                    continue
+
                 node_info = {
                     "id": node_id,
                     "status": node_data.get("status", "Unknown"),

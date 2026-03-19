@@ -48,7 +48,7 @@ tool,video-gen,video-gen,Video Generation,video-gen-{n},Generate video from text
 resource,diaflow-vision,diaflow-vision,Diaflow Vision,diaflow-vision-{n},Analyze images based on prompts,"prompt,imageSource",image,text,token
 resource,vec,vec,Diaflow Vectors,vec-{n},Vector search or add data to knowledge base,"action,input",text/file,text/data,none
 resource,drive,drive,Diaflow Drive,drive-{n},File storage save/retrieve/metadata,action,file,file/text,none
-resource,ddb,ddb,Diaflow Table,ddb-{n},Query/add/update database tables,"action,table",text,text/data,none
+resource,ddb,ddb,Diaflow Table,ddb-{n},Query/add/update database tables,"action,title,prompt,schema,generate_method,quey_field",text,text/data,none
 resource,diaflow-page,diaflow-page,Diaflow Pages,diaflow-page-{n},Manage documents within workflows,action,text,text,none
 database,mysql,mysql,MySQL,mysql-{n},MySQL database operations,"resource,table,action",text,data,none
 database,postgresql,postgresql,PostgreSQL,postgresql-{n},PostgreSQL database operations,"resource,table,action",text,data,none

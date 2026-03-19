@@ -1272,6 +1272,457 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
+  /workspace-databases/{workspaceId}/ddl/tables:
+    post:
+      tags: [Tables]
+      summary: Create empty table
+      description: >-
+        Creates a new empty database table in the workspace. The table is auto-named
+        (e.g., table_35). Rename afterward via PUT /workspace-databases/{workspaceId}/sql
+        with ALTER TABLE ... RENAME TO ... SQL.
+      parameters:
+        - $ref: "#/components/parameters/workspaceId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Empty object to create a table with default columns.
+              example: {}
+      responses:
+        "200":
+          description: Table created successfully.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /workspace-databases/{workspaceId}/ddl/columns:
+    post:
+      tags: [Tables]
+      summary: Add column to table
+      description: Add a new column to an existing database table.
+      parameters:
+        - $ref: "#/components/parameters/workspaceId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tableName, columnName, displayDataType, dataType]
+              properties:
+                tableName:
+                  type: string
+                  example: "01_products"
+                columnName:
+                  type: string
+                  example: "created_date"
+                displayDataType:
+                  type: string
+                  description: UI display type.
+                  enum: [single_line_text, long_text, number, date, checkbox]
+                  example: "date"
+                dataType:
+                  type: string
+                  description: PostgreSQL data type.
+                  enum: [character varying, text, real, integer, "timestamp with time zone", boolean]
+                  example: "timestamp with time zone"
+                isRequired:
+                  type: boolean
+                  example: false
+                defaultValue:
+                  type: string
+                  nullable: true
+                  example: "null"
+      responses:
+        "200":
+          description: Column added successfully.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /workspace-databases/{workspaceId}/ddl/columns/rename:
+    patch:
+      tags: [Tables]
+      summary: Rename column
+      description: Rename a column in a database table.
+      parameters:
+        - $ref: "#/components/parameters/workspaceId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tableName, oldColumnName, newColumnName]
+              properties:
+                tableName:
+                  type: string
+                  example: "01_products"
+                oldColumnName:
+                  type: string
+                  example: "description"
+                newColumnName:
+                  type: string
+                  example: "product_description"
+      responses:
+        "200":
+          description: Column renamed successfully.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /workspace-databases/{workspaceId}/ddl/columns/config:
+    patch:
+      tags: [Tables]
+      summary: Update column configuration
+      description: Update column settings including data type, required flag, and default value.
+      parameters:
+        - $ref: "#/components/parameters/workspaceId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tableName, columnName]
+              properties:
+                tableName:
+                  type: string
+                  example: "01_products"
+                columnName:
+                  type: string
+                  example: "name"
+                newColumnName:
+                  type: string
+                  example: "name"
+                displayDataType:
+                  type: string
+                  example: "single_line_text"
+                dataType:
+                  type: string
+                  example: "character varying"
+                isRequired:
+                  type: boolean
+                  example: true
+                defaultValue:
+                  type: string
+                  nullable: true
+                  example: "abc"
+      responses:
+        "200":
+          description: Column configuration updated.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /workspace-databases/{workspaceId}/tables/columns:
+    post:
+      tags: [Tables]
+      summary: Get table columns
+      description: Get column definitions for a specific table.
+      parameters:
+        - $ref: "#/components/parameters/workspaceId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tableName]
+              properties:
+                tableName:
+                  type: string
+                  example: "01_products"
+      responses:
+        "200":
+          description: Array of column definitions.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /workspace-databases/{workspaceId}/tables/items:
+    post:
+      tags: [Tables]
+      summary: Get table rows (paginated)
+      description: >-
+        Retrieve rows from a table with pagination, ordering, and filtering.
+        Filter is passed as URL-encoded JSON in query params.
+      parameters:
+        - $ref: "#/components/parameters/workspaceId"
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+        - name: orderBy
+          in: query
+          schema:
+            type: string
+            example: "-diaflow_created_at"
+          description: Column to order by. Prefix with - for descending.
+        - name: filter
+          in: query
+          schema:
+            type: string
+            example: '{"status":"Pending"}'
+          description: URL-encoded JSON filter object.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tableName]
+              properties:
+                tableName:
+                  type: string
+                  example: "01_chatcrm"
+      responses:
+        "200":
+          description: Paginated table rows.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /workspace-databases/{workspaceId}/dml/row:
+    post:
+      tags: [Tables]
+      summary: Insert row
+      description: Insert a new row into a table with specified column values.
+      parameters:
+        - $ref: "#/components/parameters/workspaceId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tableName, cellValuesByColumnName]
+              properties:
+                tableName:
+                  type: string
+                  example: "01_orders"
+                cellValuesByColumnName:
+                  type: object
+                  additionalProperties:
+                    nullable: true
+                  example:
+                    name: "John Doe"
+                    phone: "0901234567"
+                    product_name: "Áo polo"
+      responses:
+        "200":
+          description: Row inserted successfully.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    delete:
+      tags: [Tables]
+      summary: Delete rows
+      description: Delete one or more rows by their diaflow_id.
+      parameters:
+        - $ref: "#/components/parameters/workspaceId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tableName, rowIds]
+              properties:
+                tableName:
+                  type: string
+                  example: "01_orders"
+                rowIds:
+                  type: array
+                  items:
+                    type: string
+                  example: ["63169dc5-f8f5-45cd-95f8-66b8107ad511"]
+      responses:
+        "200":
+          description: Rows deleted successfully.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /workspace-databases/{workspaceId}/dml/row/clear:
+    put:
+      tags: [Tables]
+      summary: Clear row values
+      description: Reset/clear all values in specified rows (keeps the rows but nullifies values).
+      parameters:
+        - $ref: "#/components/parameters/workspaceId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tableName, rowIds]
+              properties:
+                tableName:
+                  type: string
+                  example: "01_products"
+                rowIds:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        "200":
+          description: Rows cleared successfully.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /workspace-databases/{workspaceId}/sql:
+    put:
+      tags: [Tables]
+      summary: Execute raw SQL
+      description: >-
+        Execute raw SQL statements against the workspace database.
+        Supports UPDATE, ALTER TABLE (rename), and other DDL/DML operations.
+        Table and column names must be quoted with double quotes.
+      parameters:
+        - $ref: "#/components/parameters/workspaceId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sql]
+              properties:
+                sql:
+                  type: string
+                  description: SQL statement to execute.
+                  example: "UPDATE \"01_chatcrm\" SET \"status\" = 'Done' WHERE diaflow_id = 'uuid'"
+      responses:
+        "200":
+          description: SQL executed successfully.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /workspace-databases/{workspaceId}/csv-schema:
+    post:
+      tags: [Tables]
+      summary: Parse CSV schema
+      description: >-
+        Parse a CSV file to extract column schema before importing.
+        The file must be previously uploaded to Diaflow Drive.
+      parameters:
+        - $ref: "#/components/parameters/workspaceId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [file, isTreatFirstRowAsHeader]
+              properties:
+                file:
+                  type: string
+                  description: Drive path to the CSV file.
+                  example: "production/workspace_256/products.csv"
+                isTreatFirstRowAsHeader:
+                  type: boolean
+                  example: true
+      responses:
+        "200":
+          description: Parsed column schema from CSV.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /workspace-databases/{workspaceId}/upsert-table:
+    post:
+      tags: [Tables]
+      summary: Import CSV into table
+      description: >-
+        Create a new table or update an existing table by importing data from a CSV file.
+        Specify column mappings, data types, and primary key configuration.
+        Note: table names starting with a letter may conflict with reserved names;
+        prefix with numbers (e.g., 01_products) if needed.
+      parameters:
+        - $ref: "#/components/parameters/workspaceId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tableName, isTreatFirstRowAsHeader, fields, file]
+              properties:
+                tableName:
+                  type: string
+                  example: "01_products"
+                isTreatFirstRowAsHeader:
+                  type: boolean
+                  example: true
+                isNewPrimaryKey:
+                  type: boolean
+                  example: true
+                usingPrimaryKey:
+                  type: string
+                  example: ""
+                isNewTable:
+                  type: boolean
+                  example: true
+                file:
+                  type: string
+                  description: Drive path to CSV file.
+                  example: "production/workspace_256/products.csv"
+                fields:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      column:
+                        type: string
+                        example: "name"
+                      dataType:
+                        type: string
+                        example: "text"
+                      displayDataType:
+                        type: string
+                        example: "long_text"
+                      isNull:
+                        type: boolean
+                        example: false
+                      isDisplayId:
+                        type: boolean
+                        example: false
+                      isDisable:
+                        type: boolean
+                        example: false
+      responses:
+        "200":
+          description: Table created/updated with imported data.
+        "400":
+          description: Bad request (e.g., table name conflict with reserved names).
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /workspace-databases/{workspaceId}/export:
+    post:
+      tags: [Tables]
+      summary: Export table data
+      description: Export table data as CSV or downloadable content.
+      parameters:
+        - $ref: "#/components/parameters/workspaceId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tableName]
+              properties:
+                tableName:
+                  type: string
+                  example: "01_products"
+      responses:
+        "200":
+          description: Exported table data.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
   # ──────────────────────────────────────────────
   # Drive (S3 Storage)
   # ──────────────────────────────────────────────

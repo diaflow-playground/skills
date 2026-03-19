@@ -162,10 +162,103 @@ Returns features list, llm_provider options, writing_style options, writing_leng
 ## Tables
 
 ### GET /workspace-databases/{workspaceId}/tables
-Returns flat array of `{ table_name, columns: [{ name, data_type }] }`.
+Returns flat array of `{ table_name, columns: [{ name, data_type }] }`. Lists all table schemas in the workspace.
 
 ### GET /workspace-db-tables/workspace/{workspaceId}
-Returns `{ total, results }` with id, tableName, columnCount, rowCount, data, isActive, timestamps.
+Query: `page`, `limit`, `filter`, `orderBy`. Returns `{ total, results }` with id, tableName, columnCount, rowCount, data, isActive, timestamps.
+
+### POST /workspace-databases/{workspaceId}/ddl/tables
+Create a new empty table. Body: `{}` (empty object). Returns the created table with auto-generated name (e.g., `table_35`). Rename afterward via `PUT /workspace-databases/{workspaceId}/sql` with `ALTER TABLE ... RENAME TO ...`.
+
+### POST /workspace-databases/{workspaceId}/ddl/columns
+Add a column to an existing table. Body:
+```json
+{
+  "tableName": "table_35",
+  "columnName": "created_date",
+  "displayDataType": "date",
+  "dataType": "timestamp with time zone",
+  "isRequired": false,
+  "defaultValue": "null"
+}
+```
+Common `dataType` values: `character varying`, `text`, `real`, `integer`, `timestamp with time zone`, `boolean`.
+Common `displayDataType` values: `single_line_text`, `long_text`, `number`, `date`, `checkbox`.
+
+### PATCH /workspace-databases/{workspaceId}/ddl/columns/rename
+Rename a column. Body: `{ "tableName", "oldColumnName", "newColumnName" }`.
+
+### PATCH /workspace-databases/{workspaceId}/ddl/columns/config
+Update column configuration. Body:
+```json
+{
+  "tableName": "table_35",
+  "columnName": "test",
+  "newColumnName": "test",
+  "displayDataType": "single_line_text",
+  "dataType": "character varying",
+  "isRequired": true,
+  "defaultValue": "abc"
+}
+```
+
+### POST /workspace-databases/{workspaceId}/tables/columns
+Get column definitions for a table. Body: `{ "tableName": "table_35" }`.
+
+### POST /workspace-databases/{workspaceId}/tables/items
+Get rows from a table (paginated). Query: `page`, `limit`, `orderBy`, `filter`.
+Body: `{ "tableName": "table_35" }`.
+`orderBy` examples: `-diaflow_created_at` (descending), `name` (ascending).
+`filter` is a URL-encoded JSON object (e.g., `{"status":"Pending"}`).
+
+### POST /workspace-databases/{workspaceId}/dml/row
+Insert a new row. Body:
+```json
+{
+  "tableName": "table_35",
+  "cellValuesByColumnName": {
+    "name": "value1",
+    "phone_number": "123",
+    "created_date": null
+  }
+}
+```
+
+### PUT /workspace-databases/{workspaceId}/sql
+Execute raw SQL (UPDATE, ALTER TABLE, etc.). Body: `{ "sql": "UPDATE \"table_35\" SET \"name\" = 'value' WHERE diaflow_id = 'uuid'" }`.
+Also used for table rename: `{ "sql": "ALTER TABLE \"old_name\" RENAME TO \"new_name\";" }`.
+
+### DELETE /workspace-databases/{workspaceId}/dml/row
+Delete rows by ID. Body: `{ "tableName": "table_35", "rowIds": ["uuid1", "uuid2"] }`.
+
+### PUT /workspace-databases/{workspaceId}/dml/row/clear
+Clear (reset) row values. Body: `{ "tableName": "table_35", "rowIds": ["uuid1", "uuid2"] }`.
+
+### POST /workspace-databases/{workspaceId}/csv-schema
+Parse a CSV file schema before import. Body: `{ "file": "production/workspace_256/products.csv", "isTreatFirstRowAsHeader": true }`.
+The file path references a file previously uploaded to Diaflow Drive.
+
+### POST /workspace-databases/{workspaceId}/upsert-table
+Import CSV data into a new or existing table. Body:
+```json
+{
+  "tableName": "01_products",
+  "isTreatFirstRowAsHeader": true,
+  "isNewPrimaryKey": true,
+  "usingPrimaryKey": "",
+  "isNewTable": true,
+  "file": "production/workspace_256/products.csv",
+  "fields": [
+    {"column": "id", "dataType": "real", "displayDataType": "number", "isNull": false, "isDisplayId": true, "isDisable": false},
+    {"column": "name", "dataType": "text", "displayDataType": "long_text", "isNull": false, "isDisable": false},
+    {"column": "price", "dataType": "real", "displayDataType": "number", "isNull": false, "isDisable": false}
+  ]
+}
+```
+**Note:** Table names starting with a letter may conflict with reserved names. Prefix with numbers (e.g., `01_products`) if needed.
+
+### POST /workspace-databases/{workspaceId}/export
+Export table data. Body: `{ "tableName": "table_35" }`. Returns CSV or downloadable content.
 
 ---
 

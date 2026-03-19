@@ -761,13 +761,129 @@ Only works with App-type flows. Executes synchronously.
 - **ID pattern**: `ddb-{n}`
 - **Type**: `ddb`
 
+### Actions
+
+| Action value | UI label | Purpose |
+|---|---|---|
+| `queryDataFromTable` | Query data from table | Read/search rows |
+| `addDataToTable` | Add data to table | Insert new rows |
+| `updateDataToTable` | Update data to table | Modify existing rows |
+
+### Common Fields
+
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| action | string | yes | `"query"`, `"add"`, `"update"` |
-| table | string | yes | Target table name |
-| sqlGenerateMethod | string | no | `"ai"` or `"manual"` |
-| input | string | no | Query or data |
-| caching | boolean | no | Enable caching |
+| action | string | yes | See actions table above |
+| title | string | yes | Target table name (e.g., `"Transaction"`, `"01_products"`) |
+| config | object | no | `{"node_name": "...", "is_collapsed_layout": false}` |
+| prompt | string | yes | Schema + question template (auto-built from schema + quey_field) |
+| schema | string | yes | `CREATE TABLE` DDL for the target table |
+| result | object | no | `{}` (populated after execution) |
+
+### Action-Specific Fields
+
+**For `queryDataFromTable`:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| model | string | yes (AI) | LLM model for SQL generation, e.g. `"gpt-4o-mini"` |
+| system | string | no | System prompt for AI SQL generation |
+| generate_method | string | yes | `"useAI"` or `"manual"` |
+| manual | string | no (manual) | Raw SQL query (used when `generate_method` is `"manual"`) |
+| quey_field | string | no | Input reference for the question (e.g., `"in-0"`, `null`) |
+
+**For `addDataToTable` and `updateDataToTable`:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| model | string | no | LLM model (needed for `"useAI"` mode) |
+| system | string | no | System prompt for AI SQL generation |
+| generate_method | string | yes | `"useAI"` or `"manual"` |
+| manual | string | no (manual) | Raw SQL INSERT/UPDATE (used when `generate_method` is `"manual"`) |
+| quey_field | string | **yes** | **The Input field** — template reference for data to insert/update (e.g., `"{{openai-0.output}}"`, `"{{py-0.output}}"`) |
+
+### Critical: The `quey_field` Property
+
+The `quey_field` property maps to the **Input** field in the Diaflow UI. For `addDataToTable` and `updateDataToTable`, this field is **required** — without it, the node fails with: `"Invalid query field format. Cannot mix 'output' field with other fields."`
+
+The value should be a Diaflow template reference to the upstream node whose output contains the data to process (e.g., `"{{openai-0.output}}"`, `"{{json-formatter-0.output}}"`, `"{{py-0.output}}"`).
+
+### Prompt Format
+
+The `prompt` field follows a standard format:
+
+```
+schema
+CREATE TABLE "table_name" (
+    "column1" CHARACTER VARYING,
+    "column2" REAL
+);
+------------------------
+
+From the question-answer pairs, generate SQL queries using the previously provided schema
+
+question {{quey_field_value}}
+```
+
+The `question` part at the end should match the `quey_field` value — it's how the template engine resolves the input data.
+
+### Examples
+
+**Query with manual SQL (e.g., fetch all products):**
+```json
+{
+  "model": "gpt-4o-mini",
+  "title": "01_products",
+  "action": "queryDataFromTable",
+  "config": {"node_name": "Fetch Product Catalog", "is_collapsed_layout": false},
+  "prompt": "schema\nCREATE TABLE \"01_products\" (\n    \"name\" CHARACTER VARYING,\n    \"price\" REAL\n);\n------------------------\n\nFrom the question-answer pairs, generate SQL queries using the previously provided schema\n\nquestion Get all products",
+  "manual": "SELECT \"name\", \"price\" FROM \"01_products\"",
+  "schema": "CREATE TABLE \"01_products\" (\n    \"name\" CHARACTER VARYING,\n    \"price\" REAL\n);",
+  "system": "answer with ONLY sql query. Double quotes are used to indicate identifiers within the database.",
+  "result": {},
+  "generate_method": "manual"
+}
+```
+
+**Add data with AI SQL generation (e.g., log chat to CRM):**
+```json
+{
+  "title": "01_chatcrm",
+  "action": "addDataToTable",
+  "config": {"node_name": "Log Chat to CRM", "is_collapsed_layout": false},
+  "prompt": "schema\nCREATE TABLE \"01_chatcrm\" (\n    \"user\" CHARACTER VARYING,\n    \"status\" CHARACTER VARYING\n);\n------------------------\n\nFrom the question-answer pairs, generate SQL queries using the previously provided schema\n\nquestion {{openai-0.output}}",
+  "schema": "CREATE TABLE \"01_chatcrm\" (\n    \"user\" CHARACTER VARYING,\n    \"status\" CHARACTER VARYING\n);",
+  "system": "answer with ONLY sql query. Double quotes are used to indicate identifiers within the database.",
+  "quey_field": "{{openai-0.output}}",
+  "result": {},
+  "generate_method": "useAI"
+}
+```
+
+**Update with manual SQL (e.g., mark rows as Done):**
+```json
+{
+  "title": "01_chatcrm",
+  "action": "updateDataToTable",
+  "config": {"node_name": "Update Status to Done", "is_collapsed_layout": false},
+  "prompt": "schema\nCREATE TABLE \"01_chatcrm\" (\n    \"status\" CHARACTER VARYING\n);\n------------------------\n\nFrom the question-answer pairs, generate SQL queries using the previously provided schema\n\nquestion Update status to Done where Pending",
+  "manual": "UPDATE \"01_chatcrm\" SET \"status\" = 'Done' WHERE \"status\" = 'Pending'",
+  "schema": "CREATE TABLE \"01_chatcrm\" (\n    \"status\" CHARACTER VARYING\n);",
+  "system": "answer with ONLY sql query. Double quotes are used to indicate identifiers within the database.",
+  "quey_field": "Update status to Done where Pending",
+  "result": {},
+  "generate_method": "manual"
+}
+```
+
+### Getting the Schema
+
+To populate the `schema` field, query the workspace tables API:
+```bash
+curl -s "https://api.diaflow.io/api/v1/workspace-databases/{workspaceId}/tables" \
+  -H "Authorization: Bearer $DIAFLOW_TOKEN"
+```
+Then build the `CREATE TABLE` DDL from the column names and data types (exclude `diaflow_*` system columns).
 
 **Connections**: Accepts text input. Outputs text/data.
 

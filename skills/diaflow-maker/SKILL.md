@@ -26,6 +26,19 @@ Diaflow is a GenAI app builder platform where users create workflows (called "bu
 5. **PATCH is NOT supported** on builders — always use PUT with the numeric `id`
 6. **Check `templates/`** for matching patterns before building from scratch
 7. **Reference `{{nodeId.output}}`** syntax in prompts and values to connect node outputs
+8. **ddb nodes require specific field names** — read `references/node-configs.md` § "ddb (Diaflow Table)" before generating any ddb node. Key gotchas:
+   - Action values are `queryDataFromTable`, `addDataToTable`, `updateDataToTable` (NOT `query`/`add`/`update`)
+   - Table name goes in `title` field (NOT `table`)
+   - `addDataToTable`/`updateDataToTable` **require** `quey_field` with a template reference (e.g., `"{{openai-0.output}}"`) — without it, the node fails with "Cannot mix 'output' field"
+   - Always include `schema` (CREATE TABLE DDL) and `prompt` (schema + question template)
+   - When unsure about ddb config, fetch a working builder that uses ddb nodes and copy its structure
+9. **When generating unfamiliar node types**, first search the workspace for existing builders that use that node type and examine their data structure — real working examples are more reliable than documentation alone
+10. **Build robust workflows** — proactively handle edge cases and failure scenarios:
+    - **Database guards**: Always add safety conditions to UPDATE/DELETE queries (e.g., `WHERE "stock" > 0` to prevent negative inventory, `LIMIT` clauses to prevent mass updates)
+    - **Template value parsing**: When a Python node receives `{{nodeId.output}}`, the value may be wrapped in extra quotes. Always strip outer quotes and use `ai_response[ai_response.index('{'):ai_response.rindex('}')+1]` to extract JSON from potentially wrapped strings
+    - **Graceful fallbacks**: Every `try/except` in Python nodes should produce meaningful fallback values (e.g., `'Processing error'`) instead of empty strings or raw error dumps
+    - **Data separation**: Keep CRM/logging columns clean — `bot` should store the human-readable message (not raw JSON), `extracted_json` should store only the structured data fields, `information` should be a short status summary (not duplicated from other columns)
+    - **Idempotency**: Design UPDATE operations to be safe if executed multiple times (e.g., use absolute values or conditional checks rather than blind decrements)
 
 ## Quick Reference
 
