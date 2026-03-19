@@ -19,7 +19,8 @@ Quick reference for all Diaflow API endpoints. For full schemas with all propert
 14. [API Keys](#api-keys)
 15. [Integrations](#integrations)
 16. [Products](#products)
-17. [Chat & Prompts](#chat--prompts)
+17. [Conversations & Execution](#conversations--execution)
+18. [Chat & Prompts](#chat--prompts)
 
 ---
 
@@ -237,6 +238,34 @@ Body: `{ "type", "name", "config": {} }`.
 
 ### GET /products/{productId}
 Product/plan details: name, internalId, billingTag, productType, fixedCredit, monthlyRenewed, creditsGranted, priority, label, resource limits (totalFlowsAmount, totalUsersAmount, etc.), feature flags, pricing.
+
+---
+
+## Conversations & Execution
+
+### POST /conversations
+Create a new conversation session for a chat flow preview/execution.
+Body: `{ "builderId": "uniqueId", "input": {} }`.
+Returns conversation object with `id` (integer, e.g., `180111`).
+
+### POST /conversations/{conversationId}/process
+Send a message or trigger flow execution within a conversation.
+Body: `{ "message": "user input text" }`.
+Returns a process UUID for polling (e.g., `814d88d9-f831-4afe-9423-1fa8d6ed4e87`).
+
+### GET /conversations/{conversationId}/process-checks/{processUuid}
+Poll for execution completion. Called repeatedly (~1s interval) until the flow finishes.
+Returns execution status with per-node results:
+- `status`: "running" | "completed" | "failed"
+- Node-by-node output data, status, and errors
+- On completion: final bot response message
+
+**Execution flow pattern:**
+1. `POST /conversations` → get conversationId
+2. `POST /conversations/{id}/process` → get processUuid
+3. `GET /conversations/{id}/process-checks/{uuid}` → poll until done (repeat every ~1s)
+
+> **Note:** Preview mode uses HTTP polling, not WebSockets. Complex flows with multiple AI nodes can take 30-40+ seconds. Individual nodes (especially OpenAI) may timeout.
 
 ---
 

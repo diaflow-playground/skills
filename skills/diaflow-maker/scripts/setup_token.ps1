@@ -13,20 +13,15 @@ Write-Host "Follow the steps below:"
 Write-Host ""
 Write-Host "  1. Open https://platform.diaflow.app in your browser"
 Write-Host "  2. Log in with your account (if not already logged in)"
-Write-Host "  3. Open Developer Tools: press F12 or Ctrl + Shift + I"
+Write-Host "  3. Open the browser Console:" -ForegroundColor Yellow
+Write-Host "       - Press F12 then click the 'Console' tab"
 Write-Host ""
-Write-Host "  Option A - From Network tab:" -ForegroundColor Yellow
-Write-Host "    4. Click the 'Network' tab in DevTools"
-Write-Host "    5. Refresh the page (F5)"
-Write-Host "    6. Click any request to api.diaflow.io"
-Write-Host "    7. In the 'Headers' section, find 'Authorization: Bearer ...'"
-Write-Host "    8. Copy everything AFTER 'Bearer ' (the long token string)"
+Write-Host "  4. Paste this JavaScript code into the Console and press Enter:" -ForegroundColor Yellow
 Write-Host ""
-Write-Host "  Option B - From Application/Storage tab:" -ForegroundColor Yellow
-Write-Host "    4. Click 'Application' (Chrome) or 'Storage' (Firefox)"
-Write-Host "    5. Expand 'Local Storage' -> click https://platform.diaflow.app"
-Write-Host "    6. Look for a key containing 'token' or 'session'"
-Write-Host "    7. Copy the token value"
+Write-Host '     (() => { const skip = /^(__GT_|_ga|_gid|_gat|__utm|analytics|gtm)/i; const found = []; const keys = Object.keys(localStorage); for (const k of keys) { if (skip.test(k)) continue; const v = localStorage.getItem(k); try { const obj = JSON.parse(v); if (obj && typeof obj === "object") { for (const [sk, sv] of Object.entries(obj)) { if (typeof sv === "string" && sv.length > 20) { if (/token/i.test(sk)) { found.push({key: k, sub: sk, val: sv, pri: 1}); } else if (/session/i.test(sk) && !skip.test(sk)) { found.push({key: k, sub: sk, val: sv, pri: 2}); } } } } } catch(e) {} if (typeof v === "string" && v.length > 20) { if (/token/i.test(k)) { found.push({key: k, val: v, pri: 1}); } else if (/session/i.test(k)) { found.push({key: k, val: v, pri: 2}); } } } if (found.length) { found.sort((a,b) => a.pri - b.pri); const t = found[0]; console.log("Key:", t.key, t.sub ? "-> " + t.sub : ""); copy(t.val); console.log("Token copied to clipboard!"); } else { console.log("No token found. Make sure you are logged in."); } })()'
+Write-Host ""
+Write-Host "  5. The token will be automatically copied to your clipboard."
+Write-Host "     Come back here and paste it below."
 Write-Host ""
 
 $Token = Read-Host "Paste your token here"

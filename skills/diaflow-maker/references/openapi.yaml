@@ -54,6 +54,8 @@ tags:
     description: Third-party integrations and credentials
   - name: Products
     description: Subscription products and plans
+  - name: Conversations
+    description: Conversation sessions, message processing, and execution polling
   - name: Chat
     description: Chat preset styles and agent windows
   - name: Prompts
@@ -1772,6 +1774,192 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
+
+  # ──────────────────────────────────────────────
+  # Conversations & Execution
+  # ──────────────────────────────────────────────
+
+  /conversations:
+    post:
+      tags: [Conversations]
+      summary: Create a new conversation
+      description: |
+        Create a new conversation session for a chat flow.
+        Used by the Preview panel and chat interfaces to start a new chat session.
+        Requires the `Workspace-Id` header.
+      parameters:
+        - name: Workspace-Id
+          in: header
+          required: true
+          schema:
+            type: string
+          description: The workspace ID.
+          example: "256"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConversationCreateRequest"
+            example:
+              isTest: true
+              defaultFirstMessage: ["Hi there! Welcome!"]
+              builderId: 46954
+              type: "chat"
+              title: "2026-03-19T09:03:59.188Z"
+      responses:
+        "200":
+          description: Conversation created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Conversation"
+              example:
+                title: "2026-03-19T09:03:59.188Z"
+                builderId: 46954
+                isRead: false
+                type: "chat"
+                isTest: true
+                id: 180137
+                createdById: 4606
+                createdBy: null
+                createdAt: "2026-03-19T09:05:50.256730Z"
+                channelId: "e38bc883-5f1e-40b8-a4b7-b237ee061ce0"
+                createdOn: null
+                lastInteraction: null
+                totalPrompt: 0
+                meta: null
+                updatedAt: "2026-03-19T09:05:50.256733Z"
+                via: "test"
+                customization: null
+                duration: null
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /conversations/{conversationId}/process:
+    post:
+      tags: [Conversations]
+      summary: Send a message / trigger flow execution
+      description: |
+        Send a user message to an existing conversation, triggering the flow execution.
+        Returns a process UUID that can be used to poll for execution status via the
+        process-checks endpoint.
+        Requires the `Workspace-Id` header.
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The conversation ID returned from POST /conversations.
+          example: 180137
+        - name: Workspace-Id
+          in: header
+          required: true
+          schema:
+            type: string
+          description: The workspace ID.
+          example: "256"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConversationProcessRequest"
+            example:
+              input: "Hello, I want to buy a shirt"
+      responses:
+        "200":
+          description: Flow execution started. Use the returned id/sessionId to poll for results.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConversationProcessResponse"
+              example:
+                sessionId: "6d2eea35-b239-468c-8523-0f49034c3fc7"
+                status: "Processing"
+                createdAt: "2026-03-18T17:15:33.145166"
+                id: "6d2eea35-b239-468c-8523-0f49034c3fc7"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /conversations/{conversationId}/process-checks/{processUuid}:
+    get:
+      tags: [Conversations]
+      summary: Poll for execution completion
+      description: |
+        Poll for the status of a flow execution. Called repeatedly (~1 second interval)
+        until the flow finishes processing.
+
+        The response includes:
+        - `status`: "Processing" while running, "Done" on success, "Error" on failure.
+        - `node`: Array of per-node status objects showing real-time execution progress.
+        - `result`: Object keyed by node ID with detailed execution data (latency, input, output).
+        - `total_step`: Total number of steps in the flow.
+        - `workspace_id`: The workspace ID.
+
+        **Polling pattern:** Keep calling this endpoint every ~1 second until `status`
+        is no longer "Processing". Complex flows with multiple AI nodes can take 30-40+ seconds.
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The conversation ID.
+          example: 180137
+        - name: processUuid
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: The process UUID returned from POST /conversations/{id}/process.
+          example: "6d2eea35-b239-468c-8523-0f49034c3fc7"
+        - name: Workspace-Id
+          in: header
+          required: true
+          schema:
+            type: string
+          description: The workspace ID.
+          example: "256"
+      responses:
+        "200":
+          description: Current execution status with per-node results.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProcessCheckResponse"
+              example:
+                status: "Done"
+                node:
+                  - trigger:
+                      status: "Done"
+                      time: 0.007
+                      metaContent: "Get value from input"
+                      message: null
+                      output:
+                        input: "Hello, I want to buy a shirt"
+                        attachment: []
+                      input: {}
+                  - openai-0:
+                      status: "Done"
+                      time: 3.5
+                      metaContent: "OpenAI"
+                      message: null
+                      output: "AI response text..."
+                      input: {}
+                result:
+                  trigger:
+                    start: 1773911159.26
+                    end: 1773911159.27
+                    latency: 0.007
+                    input_cf: {}
+                    node_order: 0
+                total_step: 18
+                workspace_id: 256
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 
   # ──────────────────────────────────────────────
   # Chat & Prompts
@@ -5087,3 +5275,252 @@ components:
           format: date-time
           description: Last update timestamp.
           example: "2025-12-19T07:52:57.067011Z"
+
+    # ── Conversation Schemas ──
+
+    ConversationCreateRequest:
+      type: object
+      required: [builderId, type]
+      properties:
+        isTest:
+          type: boolean
+          description: Whether this is a test/preview conversation.
+          example: true
+        defaultFirstMessage:
+          type: array
+          items:
+            type: string
+          description: Default greeting messages to show at the start of the conversation.
+          example: ["Hi there! Welcome!"]
+        builderId:
+          type: integer
+          description: The numeric builder ID (not the uniqueId string).
+          example: 46954
+        type:
+          type: string
+          enum: [chat, form]
+          description: The conversation type matching the builder's interface type.
+          example: "chat"
+        title:
+          type: string
+          description: Conversation title, typically an ISO timestamp.
+          example: "2026-03-19T09:03:59.188Z"
+
+    Conversation:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: The conversation ID. Used in subsequent process and process-checks calls.
+          example: 180137
+        title:
+          type: string
+          description: Conversation title.
+          example: "2026-03-19T09:03:59.188Z"
+        builderId:
+          type: integer
+          description: The numeric builder ID.
+          example: 46954
+        isRead:
+          type: boolean
+          description: Whether the conversation has been read by the owner.
+          example: false
+        type:
+          type: string
+          description: Conversation type.
+          example: "chat"
+        isTest:
+          type: boolean
+          description: Whether this is a test/preview conversation.
+          example: true
+        createdById:
+          type: integer
+          description: ID of the user who created the conversation.
+          example: 4606
+        createdBy:
+          type: object
+          nullable: true
+          description: User object of the creator.
+        createdAt:
+          type: string
+          format: date-time
+          description: Creation timestamp.
+          example: "2026-03-19T09:05:50.256730Z"
+        channelId:
+          type: string
+          format: uuid
+          description: Unique channel identifier for the conversation.
+          example: "e38bc883-5f1e-40b8-a4b7-b237ee061ce0"
+        createdOn:
+          type: string
+          nullable: true
+          description: Platform where the conversation was created.
+        lastInteraction:
+          type: string
+          format: date-time
+          nullable: true
+          description: Timestamp of the last interaction.
+        totalPrompt:
+          type: integer
+          description: Total number of prompts/messages in the conversation.
+          example: 0
+        meta:
+          type: object
+          nullable: true
+          description: Additional metadata.
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last update timestamp.
+          example: "2026-03-19T09:05:50.256733Z"
+        via:
+          type: string
+          description: How the conversation was initiated (e.g., "test", "chat_app", "api").
+          example: "test"
+        customization:
+          type: object
+          nullable: true
+          description: Custom appearance/behavior settings.
+        duration:
+          type: number
+          nullable: true
+          description: Total conversation duration in seconds.
+
+    ConversationProcessRequest:
+      type: object
+      required: [input]
+      properties:
+        input:
+          type: string
+          description: The user's message text to send to the flow.
+          example: "Hello, I want to buy a shirt"
+
+    ConversationProcessResponse:
+      type: object
+      properties:
+        sessionId:
+          type: string
+          format: uuid
+          description: |
+            The process session UUID. Same value as `id`.
+            Use this to poll via GET /conversations/{conversationId}/process-checks/{sessionId}.
+          example: "6d2eea35-b239-468c-8523-0f49034c3fc7"
+        id:
+          type: string
+          format: uuid
+          description: The process UUID (same as sessionId).
+          example: "6d2eea35-b239-468c-8523-0f49034c3fc7"
+        status:
+          type: string
+          enum: [Processing, Done, Error]
+          description: Initial status, always "Processing" when first returned.
+          example: "Processing"
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp when processing started.
+          example: "2026-03-18T17:15:33.145166"
+
+    ProcessCheckResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [Processing, Done, Error]
+          description: |
+            Current execution status.
+            - "Processing": Flow is still executing, keep polling.
+            - "Done": Flow completed successfully.
+            - "Error": Flow execution failed.
+          example: "Done"
+        node:
+          type: array
+          description: |
+            Array of per-node status objects. Each element is an object with a single key
+            (the node ID) mapping to the node's execution details. Grows as nodes complete.
+          items:
+            type: object
+            additionalProperties:
+              $ref: "#/components/schemas/NodeExecutionStatus"
+        result:
+          type: object
+          description: |
+            Detailed execution results keyed by node ID. Contains timing data,
+            input/output payloads, and node ordering. Only present for completed nodes.
+          additionalProperties:
+            $ref: "#/components/schemas/NodeExecutionResult"
+        total_step:
+          type: integer
+          description: Total number of steps/nodes in the flow.
+          example: 18
+        workspace_id:
+          type: integer
+          description: The workspace ID.
+          example: 256
+
+    NodeExecutionStatus:
+      type: object
+      description: Real-time status of a single node during execution.
+      properties:
+        status:
+          type: string
+          enum: [Done, Error, Processing]
+          description: Node execution status.
+          example: "Done"
+        time:
+          type: number
+          description: Execution time in seconds for this node.
+          example: 0.007
+        metaContent:
+          type: string
+          description: Human-readable description of the node's action.
+          example: "Get value from input"
+        message:
+          type: string
+          nullable: true
+          description: Error message if the node failed, null otherwise.
+          example: null
+        output:
+          description: The node's output data. Shape varies by node type.
+        input:
+          description: The node's input data. Shape varies by node type.
+
+    NodeExecutionResult:
+      type: object
+      description: Detailed execution result for a completed node.
+      properties:
+        start:
+          type: number
+          description: Unix timestamp when the node started executing.
+          example: 1773911159.26
+        end:
+          type: number
+          description: Unix timestamp when the node finished executing.
+          example: 1773911159.27
+        latency:
+          type: number
+          description: Execution latency in seconds.
+          example: 0.007
+        input_cf:
+          type: object
+          description: The node's configuration and input data.
+        node_order:
+          type: integer
+          description: The order in which this node was executed (0-indexed).
+          example: 0
+        input:
+          type: string
+          nullable: true
+          description: The input text/data passed to this node.
+        advanced_chat_attachment:
+          type: array
+          nullable: true
+          description: Advanced chat attachments if any.
+          items:
+            type: object
+        attachment:
+          type: array
+          nullable: true
+          description: File attachments if any.
+          items:
+            type: object
