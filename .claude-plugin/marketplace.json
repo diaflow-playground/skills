@@ -7,7 +7,7 @@
   },
   "plugins": [
     {
-      "name": "diaflow-skill",
+      "name": "diaflow-plugin",
       "description": "Autonomous Diaflow workflow builder agent. Create, update, validate, debug, and deploy Diaflow workflows, chatbots, apps, and automations through a structured conversational process.",
       "category": "development",
       "source": "./",

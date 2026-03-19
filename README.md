@@ -66,7 +66,7 @@ Then restart Claude Code. The plugin will appear in `/plugin > Discover`.
 
 1. Open Claude Code
 2. Type `/plugin` and select **Discover**
-3. Search for `diaflow-skill` and install
+3. Search for `diaflow-plugin` and install
 
 ### Install scope
 
