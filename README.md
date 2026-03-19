@@ -50,12 +50,12 @@ claude plugin marketplace add https://github.com/diaflow-playground/skills.git
 Add this entry to `~/.claude/plugins/known_marketplaces.json`:
 
 ```json
-"diaflow-skill": {
+"diaflow": {
   "source": {
     "source": "git",
     "url": "https://github.com/diaflow-playground/skills.git"
   },
-  "installLocation": "/Users/YOUR_USERNAME/.claude/plugins/marketplaces/diaflow-skill",
+  "installLocation": "/Users/YOUR_USERNAME/.claude/plugins/marketplaces/diaflow",
   "autoUpdate": true
 }
 ```
