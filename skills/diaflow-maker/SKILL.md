@@ -32,10 +32,20 @@ Diaflow is a GenAI app builder platform where users create workflows (called "bu
 | Item | Value |
 |------|-------|
 | **Base URL** | `https://api.diaflow.io/api/v1` |
-| **Auth** | `Authorization: Bearer <JWT>` (from `POST /auth/login`) |
+| **Auth** | `Authorization: Bearer $DIAFLOW_TOKEN` (see Authentication Setup below) |
 | **Optional Auth** | `x-api-key: <workspace_api_key>` header |
 | **Pagination** | `?page=1&pageSize=20` → `{ total, results }` |
 | **Errors** | `{ "detail": "error message" }` |
+
+## Authentication Setup
+
+Before making any API calls, ensure `$DIAFLOW_TOKEN` is set:
+
+1. **Check**: Run `echo $DIAFLOW_TOKEN` — if it prints a token, you're ready
+2. **If not set**: Run the setup script for the user's platform:
+   - **Mac/Linux**: `bash scripts/setup_token.sh`
+   - **Windows**: `powershell -ExecutionPolicy Bypass -File scripts/setup_token.ps1`
+3. **Never ask for email/password** — always use the browser token approach
 
 ## Reference Loading Guide
 
@@ -175,26 +185,20 @@ Check the output:
 
 ### Step 7: Deploy to Diaflow
 
-**Authentication** (if not already done):
-```bash
-curl -X POST https://api.diaflow.io/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"USER_EMAIL","password":"USER_PASSWORD"}'
-# Save sessionToken from response
-```
+**Pre-check**: If `$DIAFLOW_TOKEN` is not set, guide the user to run `bash scripts/setup_token.sh` first.
 
 **Create the builder** (two-step process):
 ```bash
 # Step A: Create empty builder
 curl -X POST https://api.diaflow.io/api/v1/builders \
-  -H "Authorization: Bearer $TOKEN" \
+  -H "Authorization: Bearer $DIAFLOW_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"title":"FLOW_TITLE","interfaceType":"INTERFACE_TYPE","workspaceId":WORKSPACE_ID}'
 # Response: { "id": 12345, "uniqueId": "AbCd1234" }
 
 # Step B: PUT the flow data using NUMERIC id
 curl -X PUT https://api.diaflow.io/api/v1/builders/12345 \
-  -H "Authorization: Bearer $TOKEN" \
+  -H "Authorization: Bearer $DIAFLOW_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"title":"FLOW_TITLE","data":{ ...generated JSON... }}'
 ```
@@ -202,7 +206,7 @@ curl -X PUT https://api.diaflow.io/api/v1/builders/12345 \
 **Optionally publish:**
 ```bash
 curl -X POST https://api.diaflow.io/api/v1/builders/AbCd1234/publish \
-  -H "Authorization: Bearer $TOKEN"
+  -H "Authorization: Bearer $DIAFLOW_TOKEN"
 ```
 
 Report success: provide both IDs and the platform URL.
@@ -213,17 +217,17 @@ Ask the user if they want to test:
 ```bash
 # Execute
 curl -X POST https://api.diaflow.io/api/v1/builders/AbCd1234/execute \
-  -H "Authorization: Bearer $TOKEN" \
+  -H "Authorization: Bearer $DIAFLOW_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"input":{"message":"test input"},"mode":"sync"}'
 
 # Check history
 curl "https://api.diaflow.io/api/v1/workspaces/WORKSPACE_ID/histories?page=1&pageSize=1" \
-  -H "Authorization: Bearer $TOKEN"
+  -H "Authorization: Bearer $DIAFLOW_TOKEN"
 
 # Get execution detail (per-node results)
 curl "https://api.diaflow.io/api/v1/workspaces/WORKSPACE_ID/histories/HISTORY_ID" \
-  -H "Authorization: Bearer $TOKEN"
+  -H "Authorization: Bearer $DIAFLOW_TOKEN"
 ```
 
 Review the execution result. Check each node's status in the history detail.
@@ -252,7 +256,7 @@ Ask the user for the workflow ID or URL. Accept:
 
 ```bash
 curl https://api.diaflow.io/api/v1/builders/{uniqueId} \
-  -H "Authorization: Bearer $TOKEN"
+  -H "Authorization: Bearer $DIAFLOW_TOKEN"
 ```
 
 Save both `id` (numeric, for PUT) and `uniqueId` (string, for GET).
@@ -310,7 +314,7 @@ Run `scripts/validate_workflow.py` on the updated JSON.
 ```bash
 # Use PUT with the NUMERIC id (not uniqueId!)
 curl -X PUT https://api.diaflow.io/api/v1/builders/{numericId} \
-  -H "Authorization: Bearer $TOKEN" \
+  -H "Authorization: Bearer $DIAFLOW_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"title":"FLOW_TITLE","data":{ ...updated JSON... }}'
 ```
@@ -340,7 +344,7 @@ The history detail endpoint returns per-node action data:
 | Error | Likely Cause | Fix |
 |-------|-------------|-----|
 | Node returns empty output | Missing or invalid prompt | Check prompt references ({{nodeId.output}}) |
-| 401 on execute | Token expired | Re-authenticate via POST /auth/login |
+| 401 on execute | Token expired | Re-run `scripts/setup_token.sh` to refresh token |
 | 405 Method Not Allowed | Used PATCH instead of PUT | Always use PUT for builder updates |
 | Node "error" status | Invalid data field config | Read `references/node-configs.md` for correct fields |
 | Connection not working | Missing connector | Verify all nodes are connected in connectors array |

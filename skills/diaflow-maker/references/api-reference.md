@@ -28,6 +28,8 @@ Quick reference for all Diaflow API endpoints. For full schemas with all propert
 ### POST /auth/login
 No auth required. Body: `{ "email", "password" }`. Returns `{ "sessionToken", "user" }`.
 
+> **Note:** The diaflow-maker skill uses the `$DIAFLOW_TOKEN` environment variable instead of calling this endpoint directly. Run `scripts/setup_token.sh` to set it up.
+
 ### POST /auth/logout
 Invalidates session. No body needed.
 
