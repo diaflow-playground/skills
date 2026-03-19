@@ -1,0 +1,64 @@
+{
+  "nodes": [
+    {
+      "id": "trigger",
+      "type": "trigger",
+      "width": 334,
+      "height": 457,
+      "position": { "x": 0, "y": 0 },
+      "data": {
+        "triggerType": "chat",
+        "inputs": [],
+        "attachments": false
+      }
+    },
+    {
+      "id": "openai-0",
+      "type": "openai",
+      "width": 334,
+      "height": 645,
+      "position": { "x": 400, "y": 0 },
+      "data": {
+        "model": "gpt-4o",
+        "prompt": "YOUR_SYSTEM_PROMPT_HERE",
+        "connection": "diaflow",
+        "temperature": 0.7,
+        "maxTokens": 2048,
+        "memory": true,
+        "windowSize": 5
+      }
+    },
+    {
+      "id": "output",
+      "type": "output",
+      "width": 334,
+      "height": 300,
+      "position": { "x": 800, "y": 0 },
+      "data": {
+        "outputs": [
+          {
+            "type": "text",
+            "title": "Response",
+            "value": "{{openai-0.output}}"
+          }
+        ]
+      }
+    }
+  ],
+  "connectors": [
+    {
+      "id": "edge-trigger-openai-0",
+      "source": "trigger",
+      "target": "openai-0",
+      "animated": true,
+      "type": "smoothstep"
+    },
+    {
+      "id": "edge-openai-0-output",
+      "source": "openai-0",
+      "target": "output",
+      "animated": true,
+      "type": "smoothstep"
+    }
+  ]
+}

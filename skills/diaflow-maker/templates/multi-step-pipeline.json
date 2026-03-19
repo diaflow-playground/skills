@@ -1,0 +1,177 @@
+{
+  "nodes": [
+    {
+      "id": "trigger",
+      "type": "trigger",
+      "width": 334,
+      "height": 457,
+      "position": { "x": 0, "y": 0 },
+      "data": {
+        "triggerType": "inputs",
+        "inputs": [
+          {
+            "type": "long-text",
+            "label": "YOUR_INPUT_LABEL",
+            "variableName": "user_text",
+            "required": true,
+            "placeholder": "Enter your text...",
+            "defaultValue": "",
+            "description": ""
+          }
+        ]
+      }
+    },
+    {
+      "id": "branch-0",
+      "type": "branch",
+      "width": 334,
+      "height": 400,
+      "position": { "x": 400, "y": 0 },
+      "data": {
+        "conditions": [
+          {
+            "field": "{{trigger.user_text}}",
+            "operator": "number-greater",
+            "value": "100"
+          }
+        ]
+      }
+    },
+    {
+      "id": "path-0",
+      "type": "path",
+      "width": 100,
+      "height": 50,
+      "position": { "x": 600, "y": -150 },
+      "data": {
+        "label": "Long text (>100 chars)"
+      }
+    },
+    {
+      "id": "path-1",
+      "type": "path",
+      "width": 100,
+      "height": 50,
+      "position": { "x": 600, "y": 150 },
+      "data": {
+        "label": "Short text (<=100 chars)"
+      }
+    },
+    {
+      "id": "openai-0",
+      "type": "openai",
+      "width": 334,
+      "height": 645,
+      "position": { "x": 800, "y": -200 },
+      "data": {
+        "model": "gpt-4o",
+        "prompt": "Provide a detailed analysis of the following text:\n\n{{trigger.user_text}}",
+        "connection": "diaflow",
+        "temperature": 0.7,
+        "maxTokens": 2048
+      }
+    },
+    {
+      "id": "an-0",
+      "type": "anthropic",
+      "width": 334,
+      "height": 645,
+      "position": { "x": 800, "y": 200 },
+      "data": {
+        "model": "claude-4.5-sonet",
+        "prompt": "Provide a brief summary of:\n\n{{trigger.user_text}}",
+        "temperature": 0.5,
+        "maxTokens": 512
+      }
+    },
+    {
+      "id": "json-formatter-0",
+      "type": "json-formatter",
+      "width": 334,
+      "height": 300,
+      "position": { "x": 1200, "y": 0 },
+      "data": {
+        "inputs": [
+          "{{openai-0.output}}",
+          "{{an-0.output}}"
+        ]
+      }
+    },
+    {
+      "id": "output",
+      "type": "output",
+      "width": 334,
+      "height": 350,
+      "position": { "x": 1600, "y": 0 },
+      "data": {
+        "outputs": [
+          {
+            "type": "text",
+            "title": "Analysis Result",
+            "value": "{{json-formatter-0.output}}"
+          }
+        ]
+      }
+    }
+  ],
+  "connectors": [
+    {
+      "id": "edge-trigger-branch-0",
+      "source": "trigger",
+      "target": "branch-0",
+      "animated": true,
+      "type": "smoothstep"
+    },
+    {
+      "id": "edge-branch-0-path-0",
+      "source": "branch-0",
+      "sourceHandle": "true",
+      "target": "path-0",
+      "animated": true,
+      "type": "smoothstep"
+    },
+    {
+      "id": "edge-branch-0-path-1",
+      "source": "branch-0",
+      "sourceHandle": "false",
+      "target": "path-1",
+      "animated": true,
+      "type": "smoothstep"
+    },
+    {
+      "id": "edge-path-0-openai-0",
+      "source": "path-0",
+      "target": "openai-0",
+      "animated": true,
+      "type": "smoothstep"
+    },
+    {
+      "id": "edge-path-1-an-0",
+      "source": "path-1",
+      "target": "an-0",
+      "animated": true,
+      "type": "smoothstep"
+    },
+    {
+      "id": "edge-openai-0-json-formatter-0",
+      "source": "openai-0",
+      "target": "json-formatter-0",
+      "animated": true,
+      "type": "smoothstep"
+    },
+    {
+      "id": "edge-anthropic-0-json-formatter-0",
+      "source": "an-0",
+      "target": "json-formatter-0",
+      "animated": true,
+      "type": "smoothstep"
+    },
+    {
+      "id": "edge-json-formatter-0-output",
+      "source": "json-formatter-0",
+      "target": "output",
+      "animated": true,
+      "type": "smoothstep"
+    }
+  ]
+}

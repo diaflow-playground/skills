@@ -1,0 +1,85 @@
+{
+  "nodes": [
+    {
+      "id": "trigger",
+      "type": "trigger",
+      "width": 334,
+      "height": 457,
+      "position": { "x": 0, "y": 0 },
+      "data": {
+        "triggerType": "scheduled",
+        "cronjob": {
+          "timezone": "GMT+7",
+          "intervalType": "Day",
+          "every": 1,
+          "at": "09:00",
+          "starting": "YOUR_START_DATE_MM/DD/YYYY"
+        }
+      }
+    },
+    {
+      "id": "scraper-0",
+      "type": "scraper",
+      "width": 334,
+      "height": 400,
+      "position": { "x": 400, "y": 0 },
+      "data": {
+        "url": "YOUR_TARGET_URL",
+        "outputFormat": "markdown",
+        "caching": false
+      }
+    },
+    {
+      "id": "openai-0",
+      "type": "openai",
+      "width": 334,
+      "height": 645,
+      "position": { "x": 800, "y": 0 },
+      "data": {
+        "model": "gpt-4o",
+        "prompt": "Summarize the following content into key bullet points:\n\n{{scraper-0.output}}",
+        "connection": "diaflow",
+        "temperature": 0.5,
+        "maxTokens": 1024
+      }
+    },
+    {
+      "id": "smtp-0",
+      "type": "smtp",
+      "width": 334,
+      "height": 500,
+      "position": { "x": 1200, "y": 0 },
+      "data": {
+        "credentials": "YOUR_SMTP_CREDENTIALS",
+        "to": "YOUR_RECIPIENT_EMAIL",
+        "cc": "",
+        "object": "Daily Summary",
+        "message": "{{openai-0.output}}",
+        "attachments": []
+      }
+    }
+  ],
+  "connectors": [
+    {
+      "id": "edge-trigger-scraper-0",
+      "source": "trigger",
+      "target": "scraper-0",
+      "animated": true,
+      "type": "smoothstep"
+    },
+    {
+      "id": "edge-scraper-0-openai-0",
+      "source": "scraper-0",
+      "target": "openai-0",
+      "animated": true,
+      "type": "smoothstep"
+    },
+    {
+      "id": "edge-openai-0-smtp-0",
+      "source": "openai-0",
+      "target": "smtp-0",
+      "animated": true,
+      "type": "smoothstep"
+    }
+  ]
+}

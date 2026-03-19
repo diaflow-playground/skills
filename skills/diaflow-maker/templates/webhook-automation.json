@@ -1,0 +1,74 @@
+{
+  "nodes": [
+    {
+      "id": "trigger",
+      "type": "trigger",
+      "width": 334,
+      "height": 457,
+      "position": { "x": 0, "y": 0 },
+      "data": {
+        "triggerType": "webhook",
+        "webhook": {
+          "apiKey": "YOUR_API_KEY_ID",
+          "body": [
+            { "key": "data", "required": true },
+            { "key": "callback_url", "required": false }
+          ]
+        }
+      }
+    },
+    {
+      "id": "http-request-0",
+      "type": "http-request",
+      "width": 334,
+      "height": 500,
+      "position": { "x": 400, "y": 0 },
+      "data": {
+        "method": "POST",
+        "url": "YOUR_API_ENDPOINT_URL",
+        "headers": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "parameters": [],
+        "payload": [
+          { "key": "data", "value": "{{trigger.data}}" }
+        ],
+        "failureStrategy": "retry",
+        "maxRetry": 3,
+        "retryDelay": 2
+      }
+    },
+    {
+      "id": "output",
+      "type": "output",
+      "width": 334,
+      "height": 300,
+      "position": { "x": 800, "y": 0 },
+      "data": {
+        "outputs": [
+          {
+            "type": "text",
+            "title": "API Response",
+            "value": "{{http-request-0.output}}"
+          }
+        ]
+      }
+    }
+  ],
+  "connectors": [
+    {
+      "id": "edge-trigger-http-request-0",
+      "source": "trigger",
+      "target": "http-request-0",
+      "animated": true,
+      "type": "smoothstep"
+    },
+    {
+      "id": "edge-http-request-0-output",
+      "source": "http-request-0",
+      "target": "output",
+      "animated": true,
+      "type": "smoothstep"
+    }
+  ]
+}

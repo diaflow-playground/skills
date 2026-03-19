@@ -1,0 +1,86 @@
+category,node_id,node_type,display_name,id_pattern,description,required_data_fields,input_types,output_type,credits_unit
+trigger,trigger,trigger,Trigger,trigger,Flow entry point for user input or automation triggers,"triggerType,inputs",none,text/file/audio,none
+output,output,output,Output,output,Display flow results to user,outputs,any,display,none
+llm-private,openai,openai,OpenAI,openai-{n},OpenAI GPT/DALL-E/TTS/Whisper models,"model,prompt",text/image/audio,text/image/audio,token
+llm-private,anthropic,anthropic,Anthropic,an-{n},Anthropic Claude models,"model,prompt",text,text,token
+llm-private,llama,llama,Llama,an-{n},Meta Llama models,"model,prompt",text,text,token
+llm-private,google-gemini,google-gemini,Google Gemini,gg-{n},Google Gemini models,"model,prompt",text,text,token
+llm-private,byteplus,byteplus,BytePlus,byteplus-{n},BytePlus DeepSeek/Seed models,"model,prompt",text/image,text/image/video,token
+llm-private,cohere,cohere,Cohere,an-{n},Cohere Command models,"model,prompt",text,text,token
+llm-private,mistral,mistral,MistralAI,an-{n},Mistral AI models,"model,prompt",text,text,token
+llm-public,openai-cloud,openai-cloud,OpenAI Cloud,opa-{n},OpenAI with own API key,"credentials,model,prompt",text,text,token
+llm-public,perplexity-cloud,perplexity-cloud,Perplexity Cloud,opa-{n},Perplexity with own API key,"credentials,model,prompt",text,text,token
+llm-public,byteplus-cloud,byteplus-cloud,BytePlus Cloud,byteplusc-{n},BytePlus with own API key,"credentials,model,prompt",text/image,text/image/video,token
+llm-public,deepseek-cloud,deepseek-cloud,Deepseek Cloud,opa-{n},Deepseek with own API key,"credentials,model,prompt",text,text,token
+llm-public,anthropic-cloud,anthropic-cloud,Anthropic Cloud,opa-{n},Anthropic with own API key,"credentials,model,prompt",text,text,token
+llm-public,replicate,replicate,Replicate,opa-{n},Replicate with own API key,"credentials,model,prompt",text/image,text/image,token
+llm-public,straico,straico,Straico,opa-{n},Straico multi-model with own key,"credentials,type,model,prompt",text/image,text/image,token
+llm-public,openrouter,openrouter,OpenRouter,opa-{n},OpenRouter with own API key,"credentials,model,prompt",text,text,token
+llm-public,cohere-cloud,cohere-cloud,Cohere Cloud,opa-{n},Cohere with own API key,"credentials,model,prompt",text,text,token
+llm-public,gemini-cloud,gemini-cloud,Google Gemini Cloud,opa-{n},Gemini with own API key,"credentials,model,prompt",text,text,token
+llm-public,mistralai-cloud,mistralai-cloud,MistralAI Cloud,opa-{n},MistralAI with own API key,"credentials,model,prompt",text,text,token
+llm-public,elevenlabs-cloud,elevenlabs-cloud,ElevenLabs Cloud,opa-{n},ElevenLabs TTS/STT with own key,"credentials,action,model",text/audio,audio/text,character
+llm-public,azure-cloud,azure-cloud,Azure Cloud,azure-opa-{n},Azure OpenAI with own credentials,"credentials,model,prompt",text,text,token
+llm-public,bedrock-cloud,bedrock-cloud,AWS Bedrock Cloud,bedrock-{n},AWS Bedrock foundation models,"credentials,model,prompt",text,text,token
+tool,branch,branch,Branch,branch-{n},Conditional if/else branching with 21 condition types,conditions,any,paths,none
+tool,json-formatter,json-formatter,Merge (JSON),json-formatter-{n},Combine multiple data sources into unified JSON,inputs,any,json,none
+tool,stn,stn,Split Data (JSON Formatter),stn-{n},Format output into structured JSON,input,json,json,none
+tool,date-time,date-time,Get Date and Time,date-time-{n},Get current date/time with format/timezone,retrievalData,none,text,none
+tool,scraper,scraper,Web Scraper,scraper-{n},Extract data from URLs,url,none,text/html,none
+tool,dtt,dtt,Document to Text,dtt-{n},Convert document files to plain text,data,file,text,none
+tool,tbl-analyzer,tbl-analyzer,Spreadsheet Analyzer,tbl-analyzer-{n},SQL queries on CSV/spreadsheet data,"data,action,sqlGenerateMethod",file,text/data,none
+tool,spreadsheet-creator,spreadsheet-creator,Spreadsheet Creator,spreadsheet-creator-{n},Convert JSON to CSV/XLSX/XLS,"inputData,format",json,file,none
+tool,json-chart,json-chart,JSON to Chart,json-chart-{n},Convert JSON to visual charts (13 types),"input,chartType",json,chart,none
+tool,pdf-img,pdf-img,PDF to Image,pdf-img-{n},Convert PDF pages to images,"input,pagesPerImage",file,image,none
+tool,weather,weather,Weather,weather-{n},Get current/forecast/historical weather,"type,inputMethod,value",none,text,none
+tool,http-request,http-request,HTTP Request,http-request-{n},Connect to external APIs,"method,url",none,text/json,none
+tool,geo,geo,GEO Location,geo-{n},Get geographic location data,"method,dataToRetrieve",none,text,none
+tool,smtp,smtp,SMTP Email,smtp-{n},Send automated emails,"credentials,to,object,message",text,none,none
+tool,loop,loop,Loop,loop-{n},For-each iteration over arrays (max 100 runs),input,json/array,array,none
+tool,delay,delay,Delay,delay-{n},Pause execution for duration or until time,delayType,none,none,none
+tool,file-converter,file-converter,File Converter,file-converter-{n},Convert between file formats,"originalFile,originalFormat,targetFormat",file,file,none
+tool,file-creator,file-creator,File Creator,file-creator-{n},Generate files in various formats,"fileType,fileName,content",text,file,none
+tool,qr-code,qr-code,QR Code Generator,qr-code-{n},Generate QR codes from URLs,inputUrl,text,image,none
+tool,run-flow,run-flow,Run Another Flow,run-flow-{n},Call sub-flow synchronously (App type only),flowId,any,any,none
+tool,filter,filter,Filter,filter-{n},Binary gate - pass or halt flow,conditions,any,pass/halt,none
+tool,image-gen,image-gen,Image Generation,image-gen-{n},Generate images from text (Gemini/BytePlus),"model,prompt",text,image,image
+tool,video-gen,video-gen,Video Generation,video-gen-{n},Generate video from text (BytePlus Seedance),"model,prompt",text,video,second
+resource,diaflow-vision,diaflow-vision,Diaflow Vision,diaflow-vision-{n},Analyze images based on prompts,"prompt,imageSource",image,text,token
+resource,vec,vec,Diaflow Vectors,vec-{n},Vector search or add data to knowledge base,"action,input",text/file,text/data,none
+resource,drive,drive,Diaflow Drive,drive-{n},File storage save/retrieve/metadata,action,file,file/text,none
+resource,ddb,ddb,Diaflow Table,ddb-{n},Query/add/update database tables,"action,table",text,text/data,none
+resource,diaflow-page,diaflow-page,Diaflow Pages,diaflow-page-{n},Manage documents within workflows,action,text,text,none
+database,mysql,mysql,MySQL,mysql-{n},MySQL database operations,"resource,table,action",text,data,none
+database,postgresql,postgresql,PostgreSQL,postgresql-{n},PostgreSQL database operations,"resource,table,action",text,data,none
+database,mssql,mssql,Microsoft SQL,mssql-{n},MS SQL database operations,"resource,table,action",text,data,none
+database,snowflake,snowflake,Snowflake,snowflake-{n},Snowflake database operations,"resource,table,action",text,data,none
+app,py,py,Python Code,py-{n},Execute custom Python code,code,any,any,none
+app,google_sheets_p,google_sheets_p,Google Sheets,google_sheets_p-{n},Read/write Google Sheets,"credentials,spreadsheetId,sheetName,action",data,data,request
+app,slack,slack,Slack,slack-{n},Send messages to Slack channels,"credentials,channel,message",text,none,request
+app,gmail,gmail,Gmail,gmail-{n},Send/read Gmail emails,"credentials,action",text,text,request
+app,telegram,telegram,Telegram,telegram-{n},Telegram bot messaging,"credentials,chatId,message",text,none,request
+app,youtube,youtube,YouTube,youtube-{n},Extract YouTube transcripts/data,url,text,text,request
+app,facebook_pages,facebook_pages,Facebook Pages,facebook_pages-{n},Facebook page management,"credentials,action",text,text,request
+app,whatsapp_business,whatsapp_business,WhatsApp Business,whatsapp_business-{n},WhatsApp messaging,"credentials,action",text,none,request
+app,microsoft_teams,microsoft_teams,Microsoft Teams,microsoft_teams-{n},Teams messaging,"credentials,action",text,none,request
+app,discord,discord,Discord,discord-{n},Discord messaging,"credentials,action",text,none,request
+app,linkedin,linkedin,LinkedIn,linkedin-{n},LinkedIn operations,"credentials,action",text,text,request
+app,google_drive,google_drive,Google Drive,google_drive-{n},Google Drive file operations,"credentials,action",file,file,request
+app,onedrive,onedrive,Microsoft OneDrive,onedrive-{n},OneDrive file operations,"credentials,action",file,file,request
+app,google_docs,google_docs,Google Docs,google_docs-{n},Google Docs operations,"credentials,action",text,text,request
+app,dropbox,dropbox,Dropbox,dropbox-{n},Dropbox file operations,"credentials,action",file,file,request
+app,notion,notion,Notion,notion-{n},Notion page/database operations,"credentials,action",text,text,request
+app,airtable,airtable,Airtable,airtable-{n},Airtable database operations,"credentials,action",data,data,request
+app,hubspot,hubspot,HubSpot,hubspot-{n},HubSpot CRM operations,"credentials,action",data,data,request
+app,salesforce,salesforce,Salesforce,salesforce-{n},Salesforce CRM operations,"credentials,action",data,data,request
+app,mailchimp,mailchimp,Mailchimp,mailchimp-{n},Mailchimp email marketing,"credentials,action",text,text,request
+ai-tool,text-from-image,text-from-image,Text from Image,text-from-image-{n},Extract text from images,image,image,text,token
+ai-tool,audio-transcription,audio-transcription,Audio Transcription,audio-transcription-{n},Convert audio to text (WAV/MP3),audio,audio,text,second
+ai-tool,audio-translation,audio-translation,Audio Translation,audio-translation-{n},Translate audio to target language,audio,audio,text,second
+ai-tool,image-generation-tool,image-generation-tool,Image Generation (DALL-E 3),image-generation-tool-{n},Generate images from text prompts,prompt,text,image,image
+ai-tool,entity-recognition-text,entity-recognition-text,Entity Recognition (Text),entity-recognition-text-{n},Extract entities from text,text,text,text,token
+ai-tool,entity-recognition-image,entity-recognition-image,Entity Recognition (Image),entity-recognition-image-{n},Extract entities from images,image,image,text,token
+ai-tool,image-to-text,image-to-text,Image to Text Description,image-to-text-{n},Generate text description of images,image,image,text,token
+ai-tool,text-summarization,text-summarization,Text Summarization,text-summarization-{n},Summarize long text,text,text,text,token
+ai-tool,text-to-speech,text-to-speech,Text to Speech,text-to-speech-{n},Convert text to speech,text,text,audio,character
+ai-tool,data-classification,data-classification,Data Classification,data-classification-{n},Classify data into categories,data,any,text,token

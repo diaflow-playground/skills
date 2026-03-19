@@ -1,0 +1,83 @@
+{
+  "nodes": [
+    {
+      "id": "trigger",
+      "type": "trigger",
+      "width": 334,
+      "height": 550,
+      "position": { "x": 0, "y": 0 },
+      "data": {
+        "triggerType": "inputs",
+        "inputs": [
+          {
+            "type": "short-text",
+            "label": "YOUR_INPUT_LABEL",
+            "variableName": "text_input",
+            "required": true,
+            "placeholder": "Enter text here...",
+            "defaultValue": "",
+            "description": ""
+          },
+          {
+            "type": "dropdown",
+            "label": "YOUR_DROPDOWN_LABEL",
+            "variableName": "dropdown_input",
+            "required": false,
+            "options": ["Option 1", "Option 2", "Option 3"],
+            "acceptMultiple": false,
+            "description": ""
+          },
+          {
+            "type": "file-upload",
+            "label": "Upload File",
+            "variableName": "file_input",
+            "required": false,
+            "description": ""
+          }
+        ]
+      }
+    },
+    {
+      "id": "py-0",
+      "type": "py",
+      "width": 334,
+      "height": 500,
+      "position": { "x": 400, "y": 0 },
+      "data": {
+        "code": "# YOUR_PYTHON_CODE_HERE\n# Access inputs via: trigger.text_input, trigger.dropdown_input, trigger.file_input\nresult = f\"Processed: {trigger.text_input}\"\nreturn result"
+      }
+    },
+    {
+      "id": "output",
+      "type": "output",
+      "width": 334,
+      "height": 300,
+      "position": { "x": 800, "y": 0 },
+      "data": {
+        "outputs": [
+          {
+            "type": "text",
+            "title": "Result",
+            "value": "{{py-0.output}}"
+          }
+        ]
+      }
+    }
+  ],
+  "connectors": [
+    {
+      "id": "edge-trigger-py-0",
+      "source": "trigger",
+      "target": "py-0",
+      "animated": true,
+      "type": "smoothstep"
+    },
+    {
+      "id": "edge-py-0-output",
+      "source": "py-0",
+      "target": "output",
+      "animated": true,
+      "type": "smoothstep"
+    }
+  ]
+}
