@@ -16,15 +16,51 @@ Supports all Diaflow flow types: AI Chatbots, Apps & Tools, Automations, and Sch
 
 ## Installation
 
+### Option 1: Install directly from GitHub
+
 ```bash
-claude plugin install <your-repo-url>
+claude plugin install https://github.com/diaflow-playground/skills.git
 ```
 
-Or clone the repo and install locally:
+### Option 2: Install from a local clone
 
 ```bash
-git clone https://github.com/thuantan2060/diaflow-skill.git
+git clone https://github.com/diaflow-playground/skills.git
 claude plugin install ./diaflow-skill
+```
+
+### Option 3: Browse and install via Claude Code
+
+1. Open Claude Code
+2. Type `/plugin` and select **Discover**
+3. Search for `diaflow-skill` and install
+
+### Option 4: Add as a custom marketplace
+
+If you want this plugin to appear in your `/plugin > Discover` list alongside other marketplaces, add it to your known marketplaces:
+
+1. Open `~/.claude/plugins/known_marketplaces.json`
+2. Add the following entry:
+   ```json
+   {
+     "diaflow-skill": {
+       "source": {
+         "source": "git",
+         "url": "https://github.com/diaflow-playground/skills.git"
+       },
+       "installLocation": "~/.claude/plugins/marketplaces/diaflow-skill",
+       "autoUpdate": true
+     }
+   }
+   ```
+3. Restart Claude Code — the plugin will now appear in `/plugin > Discover` and auto-update when you pull new versions
+
+### Install scope
+
+By default, the plugin installs for the **current project**. To install globally (available in all projects):
+
+```bash
+claude plugin install https://github.com/diaflow-playground/skills.git --scope user
 ```
 
 ## Setup
